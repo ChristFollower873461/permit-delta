@@ -504,7 +504,7 @@ body {
     align-items: stretch;
     gap: 8px;
   }
-  .meta-status-pill {
+  .header-status-container .meta-status-pill {
     justify-content: flex-start;
     white-space: nowrap;
   }
