@@ -297,7 +297,7 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
     """
     mock_config.LIVE_PARTNERS = True
     mock_config.GOOGLE_CLOUD_PROJECT = "test-project"
-    mock_config.GOOGLE_CLOUD_LOCATION = "us-central1"
+    mock_config.GOOGLE_CLOUD_LOCATION = "global"
     mock_config.GOOGLE_GENAI_USE_VERTEXAI = True
     
     # Mock InMemoryRunner and run_async generator stream
@@ -390,7 +390,7 @@ async def test_adk_event_output_robust_parsing(mock_config, output_data, should_
     """
     mock_config.LIVE_PARTNERS = True
     mock_config.GOOGLE_CLOUD_PROJECT = "test-project"
-    mock_config.GOOGLE_CLOUD_LOCATION = "us-central1"
+    mock_config.GOOGLE_CLOUD_LOCATION = "global"
     mock_config.GOOGLE_GENAI_USE_VERTEXAI = True
 
     mock_event = MagicMock()

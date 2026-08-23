@@ -61,7 +61,7 @@ cp .env.template .env
 To run in **Live Mode**, configure Vertex AI Application Default Credentials and configure `.env` as follows:
 ```ini
 GOOGLE_CLOUD_PROJECT=your-google-cloud-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_CLOUD_LOCATION=global
 GOOGLE_GENAI_USE_VERTEXAI=True
 PARALLEL_API_KEY=your-parallel-api-key-here
 LIVE_PARTNERS=True
