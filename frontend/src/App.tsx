@@ -162,7 +162,7 @@ export default function App() {
         </div>
         
         {/* Connection status pills - Configuration-only facts truthfully described without connection dots */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div className="header-status-container">
           <div className="meta-status-pill">
             Parallel key: {readiness?.parallel_configured ? 'Present' : 'Not set'}
           </div>
@@ -375,7 +375,7 @@ export default function App() {
               {/* Step 4: Reasoning & Explanation Basis */}
               <div className="section-box">
                 <h3 className="section-box-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <BookOpen size={14} /> Reasoning & Explanation (Gemini 3.7 Flash)
+                  <BookOpen size={14} /> {reviewResult.model_metadata.status === 'validated' ? 'REASONING & EXPLANATION (GEMINI MODEL OUTPUT)' : 'REASONING & EXPLANATION (LOCAL SAFETY FALLBACK)'}
                 </h3>
                 <div className="explanation-text">
                   {reviewResult.explanation.split('\n\n').map((paragraph, index) => {
@@ -458,7 +458,7 @@ export default function App() {
 
       {/* Footer Credits Info */}
       <footer className="footer-credits">
-        Permit Delta Decision Support System &copy; 2026 // Built autonomously with Gemini 3.7 Flash &amp; Parallel.ai Web Search.
+        Permit Delta Decision Support System © 2026 // Integrations: Google Gemini on Vertex AI + Parallel Web Search.
       </footer>
     </div>
   );

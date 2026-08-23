@@ -35,6 +35,12 @@ body {
   align-items: flex-end;
 }
 
+.header-status-container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .header-title-container h1 {
   font-size: 20px;
   font-weight: 700;
@@ -484,4 +490,22 @@ body {
   color: #999;
   text-align: center;
   border-top: 1px solid #e5e7eb;
+}
+
+/* Mobile responsive layout for header */
+@media (max-width: 768px) {
+  .header-instrument {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .header-status-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .meta-status-pill {
+    justify-content: flex-start;
+    white-space: nowrap;
+  }
 }
