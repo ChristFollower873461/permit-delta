@@ -74,7 +74,7 @@ cd backend
 python3.12 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python main.py
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 The FastAPI server runs at `http://127.0.0.1:8000`.
 
