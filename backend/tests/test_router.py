@@ -138,7 +138,7 @@ def test_spoofed_host_authority_class(source_state_parks, source_cfc):
         "url": "https://film.ca.gov/rules",  # Actually film.ca.gov host
         "authority_class": "California State Parks"  # Spoofed class label
     })
-    
+
     state, _, _, _, verified = determine_routing_state(
         scenario_id=1,
         sources=[spoofed_source, source_state_parks],  # Re-validated spoofed host makes both hosts parks.ca.gov
@@ -181,7 +181,7 @@ def test_future_timestamp_evidence_rejected(source_state_parks, source_cfc):
     """
     future_time = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
     future_source = source_cfc.model_copy(update={"retrieval_time": future_time})
-    
+
     state, _, _, _, verified = determine_routing_state(
         scenario_id=1,
         sources=[source_state_parks, future_source],
@@ -217,7 +217,7 @@ def test_denylist_authorizing_language():
     assert is_unsafe_text("This plan is approved and safe to proceed.") is True
     assert is_unsafe_text("Rangers allowed the drone. It is compliant.") is True
     assert is_unsafe_text("The production is exempt and cleared.") is True
-    
+
     # Case insensitive
     assert is_unsafe_text("THIS IS APPROVED.") is True
 
@@ -238,14 +238,14 @@ async def test_exactly_one_async_parallel_call_and_parsing(mock_config):
     """
     mock_config.LIVE_PARTNERS = True
     mock_config.PARALLEL_API_KEY = "test-key"
-    
+
     # Mocking Parallel 1.3.0 Response signature
     mock_result_1 = MagicMock()
     mock_result_1.url = "https://film.ca.gov/permitted-areas"
     mock_result_1.title = "CFC Areas"
     mock_result_1.excerpts = ["Line 1 of instructions.", "Line 2 of instructions."]
     mock_result_1.publish_date = "2026-08-20"
-    
+
     mock_result_2 = MagicMock()
     mock_result_2.url = "https://test.film.ca.gov/unauthorized"  # Rejected url
     mock_result_2.title = "Spoof"
@@ -260,15 +260,20 @@ async def test_exactly_one_async_parallel_call_and_parsing(mock_config):
     # Create mock AsyncParallel client with mock Callable 'search'
     mock_client_instance = MagicMock()
     mock_client_instance.search = AsyncMock(return_value=mock_response)
-    
+    mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+
     with patch("parallel.AsyncParallel", return_value=mock_client_instance) as mock_class:
         sources, search_id, latency, status = await execute_authority_search(scenario_id=1, query_purpose_category="administrative guidelines")
-        
+
+        # Verify the AsyncParallel constructor is called exactly once with api_key="test-key" and max_retries=0
+        mock_class.assert_called_once_with(api_key="test-key", max_retries=0)
+
         # Verify exactly one call to the search callable is made
-        mock_class.return_value.search.assert_called_once()
-        
+        mock_client_instance.search.assert_called_once()
+
         # Verify complete exact client.search kwargs (no unsupported keys passed)
-        called_kwargs = mock_class.return_value.search.call_args[1]
+        called_kwargs = mock_client_instance.search.call_args[1]
         assert called_kwargs["mode"] == "basic"
         assert called_kwargs["max_chars_total"] == 10000
         assert called_kwargs["advanced_settings"] == {
@@ -280,11 +285,44 @@ async def test_exactly_one_async_parallel_call_and_parsing(mock_config):
                 "include_domains": ["film.ca.gov", "parks.ca.gov", "faa.gov"]
             }
         }
-        
+
         # Verify only allowlisted URL is retained
         assert len(sources) == 1
         assert sources[0].provider_response_id == "test-search-id-abc"
         assert sources[0].excerpt == "Line 1 of instructions. Line 2 of instructions."
+
+        # Verify context manager was entered and exited correctly
+        mock_client_instance.__aenter__.assert_called_once()
+        mock_client_instance.__aexit__.assert_called_once_with(None, None, None)
+
+@pytest.mark.anyio
+@patch("app.search.config")
+async def test_async_parallel_lifecycle_on_exception(mock_config):
+    """
+    Verifies that if search raises an exception, the AsyncParallel client
+    is still entered and exited/closed cleanly, and the exception is processed.
+    """
+    mock_config.LIVE_PARTNERS = True
+    mock_config.PARALLEL_API_KEY = "test-key"
+
+    mock_client_instance = MagicMock()
+    mock_client_instance.search = AsyncMock(side_effect=ValueError("Search error"))
+    mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    mock_client_instance.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("parallel.AsyncParallel", return_value=mock_client_instance) as mock_class:
+        sources, search_id, latency, status = await execute_authority_search(scenario_id=1, query_purpose_category="administrative guidelines")
+
+        # Verify it fails cleanly and returns empty source list
+        assert sources == []
+        assert status == "failed"
+
+        # Verify context manager entry and exit occurred
+        mock_client_instance.__aenter__.assert_called_once()
+        mock_client_instance.__aexit__.assert_called_once()
+        # Verify __aexit__ was called with an exception (ValueError)
+        args, kwargs = mock_client_instance.__aexit__.call_args
+        assert issubclass(args[0], ValueError)
 
 @pytest.mark.anyio
 @patch("app.gemini.config")
@@ -299,36 +337,38 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
     mock_config.GOOGLE_CLOUD_PROJECT = "test-project"
     mock_config.GOOGLE_CLOUD_LOCATION = "global"
     mock_config.GOOGLE_GENAI_USE_VERTEXAI = True
-    
+
     # Mock InMemoryRunner and run_async generator stream
     mock_event = MagicMock()
     mock_event.is_final_response = MagicMock(return_value=True)
     mock_event.model_version = "gemini-3.7-flash-v1.0"
     mock_event.error_code = False
     mock_event.error_message = ""
-    
+
     # Structured Pydantic Output representation inside ADK event
     from pydantic import BaseModel as TestBaseModel
     class MockOutput(TestBaseModel):
         explanation: str = "This is an unreviewed summary. No forbidden words."
     mock_event.output = MockOutput()
     mock_event.content = None
-    
+
     mock_session_service = AsyncMock()
     mock_runner_instance = MagicMock()
     mock_runner_instance.app_name = "permit_delta"
     mock_runner_instance.session_service = mock_session_service
-    
+    mock_runner_instance.__aenter__ = AsyncMock(return_value=mock_runner_instance)
+    mock_runner_instance.__aexit__ = AsyncMock(return_value=None)
+
     # Async generator for run_async
     async def mock_generator(*args, **kwargs):
         yield mock_event
-        
+
     mock_runner_instance.run_async = mock_generator
 
     with patch("google.adk.runners.InMemoryRunner", return_value=mock_runner_instance), \
          patch("google.adk.models.Gemini"), \
          patch("google.adk.agents.Agent"):
-         
+
         explanation, metadata = await generate_explanation(
             scenario_id=1,
             state="OWNER REVIEW",
@@ -336,16 +376,16 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
             differences=["Scene schedule ordering changed."],
             sources=[MagicMock()] # Pass a dummy source so generate_explanation doesn't skip
         )
-        
+
         assert explanation == "This is an unreviewed summary. No forbidden words."
         assert metadata["provider_version"] == "gemini-3.7-flash-v1.0"
         assert metadata["status"] == "validated"
-        
+
         # Test Unsafe response denylist trigger
         class UnsafeOutput(TestBaseModel):
             explanation: str = "This plan is approved and safe to proceed."
         mock_event.output = UnsafeOutput()
-        
+
         with pytest.raises(UnsafeModelResponseError):
             await generate_explanation(
                 scenario_id=1,
@@ -359,7 +399,7 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
         class EmptyOutput(TestBaseModel):
             explanation: str = "   "
         mock_event.output = EmptyOutput()
-        
+
         with pytest.raises(ValueError):
             await generate_explanation(
                 scenario_id=1,
@@ -368,6 +408,63 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
                 differences=["Scene schedule ordering changed."],
                 sources=[MagicMock()]
             )
+
+        # Verify context manager was entered and exited correctly
+        assert mock_runner_instance.__aenter__.call_count == 3
+        assert mock_runner_instance.__aexit__.call_count == 3
+
+@pytest.mark.anyio
+@patch("app.gemini.config")
+async def test_in_memory_runner_lifecycle_on_exception(mock_config):
+    """
+    Verifies that if an exception is raised during generate_explanation
+    (such as a run_async error or denylist violation), InMemoryRunner is still entered
+    and exited/closed correctly, and the exception is propagated.
+    """
+    mock_config.LIVE_PARTNERS = True
+    mock_config.GOOGLE_CLOUD_PROJECT = "test-project"
+    mock_config.GOOGLE_CLOUD_LOCATION = "global"
+    mock_config.GOOGLE_GENAI_USE_VERTEXAI = True
+
+    mock_event = MagicMock()
+    mock_event.is_final_response = MagicMock(return_value=True)
+    mock_event.model_version = "gemini-3.7-flash-v1.0"
+    mock_event.error_code = False
+    mock_event.output = "Plain text which fails schema validation"
+    mock_event.content = None
+
+    mock_session_service = AsyncMock()
+    mock_runner_instance = MagicMock()
+    mock_runner_instance.app_name = "permit_delta"
+    mock_runner_instance.session_service = mock_session_service
+    mock_runner_instance.__aenter__ = AsyncMock(return_value=mock_runner_instance)
+    mock_runner_instance.__aexit__ = AsyncMock(return_value=None)
+
+    async def mock_generator(*args, **kwargs):
+        yield mock_event
+    mock_runner_instance.run_async = mock_generator
+
+    with patch("google.adk.runners.InMemoryRunner", return_value=mock_runner_instance), \
+         patch("google.adk.models.Gemini"), \
+         patch("google.adk.agents.Agent"):
+
+        # This will raise a ValueError due to output format being unsupported string
+        with pytest.raises(ValueError):
+            await generate_explanation(
+                scenario_id=1,
+                state="OWNER REVIEW",
+                destination="Coordinator",
+                differences=["Scene schedule ordering changed."],
+                sources=[MagicMock()]
+            )
+
+        # Verify context manager entry and exit occurred
+        mock_runner_instance.__aenter__.assert_called_once()
+        mock_runner_instance.__aexit__.assert_called_once()
+
+        # Verify __aexit__ was called with an exception (ValueError)
+        args, kwargs = mock_runner_instance.__aexit__.call_args
+        assert issubclass(args[0], ValueError)
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
@@ -405,7 +502,9 @@ async def test_adk_event_output_robust_parsing(mock_config, output_data, should_
     mock_runner_instance = MagicMock()
     mock_runner_instance.app_name = "permit_delta"
     mock_runner_instance.session_service = mock_session_service
-    
+    mock_runner_instance.__aenter__ = AsyncMock(return_value=mock_runner_instance)
+    mock_runner_instance.__aexit__ = AsyncMock(return_value=None)
+
     async def mock_generator(*args, **kwargs):
         yield mock_event
     mock_runner_instance.run_async = mock_generator
@@ -413,7 +512,7 @@ async def test_adk_event_output_robust_parsing(mock_config, output_data, should_
     with patch("google.adk.runners.InMemoryRunner", return_value=mock_runner_instance), \
          patch("google.adk.models.Gemini"), \
          patch("google.adk.agents.Agent"):
-         
+
         if should_raise:
             with pytest.raises(ValueError):
                 await generate_explanation(
@@ -432,6 +531,10 @@ async def test_adk_event_output_robust_parsing(mock_config, output_data, should_
                 sources=[MagicMock()]
             )
             assert "explanation" in metadata["configured_model"] or metadata["status"] == "validated"
+
+        # Verify context manager entry and exit occurred correctly
+        mock_runner_instance.__aenter__.assert_called_once()
+        mock_runner_instance.__aexit__.assert_called_once()
 
 # ==========================================
 # FastAPI Endpoints Integration / Mock Tests
@@ -462,7 +565,7 @@ def test_api_readiness_incomplete_when_vertex_disabled(mock_config):
     mock_config.PARALLEL_API_KEY = "present"
     mock_config.GOOGLE_CLOUD_PROJECT = "present"
     mock_config.GOOGLE_GENAI_USE_VERTEXAI = False  # False Vertex AI flag
-    
+
     response = client.get("/api/readiness")
     assert response.status_code == 200
     data = response.json()
@@ -479,14 +582,14 @@ def test_api_review_success_control_flow(mock_config, mock_gemini, mock_search, 
     mock_config.LIVE_PARTNERS = True  # Patch config live partners state to True for this endpoint run
     mock_search.return_value = ([source_state_parks, source_cfc], "search-id-abc", 15, "observed")
     mock_gemini.return_value = ("Safe explanation.", {"configured_model": "gemini-3.7-flash", "provider_version": "v1.0-mock", "latency_ms": 12, "is_vertex_ai": True, "status": "validated"})
-    
+
     response = client.post("/api/review", json={"scenario_id": 1})
     assert response.status_code == 200
     data = response.json()
     assert data["state"] == "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED"
     assert data["model_metadata"]["status"] == "validated"
     assert data["model_metadata"]["provider_version"] == "v1.0-mock"
-    
+
     # Requirement 3: Assert that retained_source_count == len(sources)
     assert data["search_metadata"]["retained_source_count"] == len(data["sources"])
 
@@ -502,7 +605,7 @@ def test_api_review_gemini_failure_fail_closed(mock_config, mock_gemini, mock_se
     mock_search.return_value = ([source_state_parks, source_cfc], "search-id-abc", 15, "observed")
     # Simulate safety exception
     mock_gemini.side_effect = UnsafeModelResponseError("Forbidden word hit.")
-    
+
     response = client.post("/api/review", json={"scenario_id": 1})
     assert response.status_code == 200
     data = response.json()

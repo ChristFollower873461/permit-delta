@@ -123,6 +123,6 @@ python -m pytest tests/ -v
 ## Verification Status
 
 In this clean-room build turn:
-- **Local Tests and Build:** Observed and fully verified (23 focused tests pass completely, frontend compiled successfully with 0 warnings/errors).
+- **Local Tests and Build:** Observed and fully verified (25 focused tests pass completely, frontend compiled successfully with 0 warnings/errors).
 - **Python 3.12 Container Target:** Not executed because local Docker daemon is unavailable.
 - **Live Parallel and Vertex AI Execution:** **NOT RUN** (remains a deployment-time gate).
