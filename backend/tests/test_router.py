@@ -565,6 +565,7 @@ def test_api_readiness_incomplete_when_vertex_disabled(mock_config):
     mock_config.PARALLEL_API_KEY = "present"
     mock_config.GOOGLE_CLOUD_PROJECT = "present"
     mock_config.GOOGLE_GENAI_USE_VERTEXAI = False  # False Vertex AI flag
+    mock_config.RUNTIME_REVISION = "local"
 
     response = client.get("/api/readiness")
     assert response.status_code == 200
@@ -580,6 +581,7 @@ def test_api_review_success_control_flow(mock_config, mock_gemini, mock_search, 
     when diverse, fresh evidence and safe model responses are observed.
     """
     mock_config.LIVE_PARTNERS = True  # Patch config live partners state to True for this endpoint run
+    mock_config.RUNTIME_REVISION = "local"
     mock_search.return_value = ([source_state_parks, source_cfc], "search-id-abc", 15, "observed")
     mock_gemini.return_value = ("Safe explanation.", {"configured_model": "gemini-3.7-flash", "provider_version": "v1.0-mock", "latency_ms": 12, "is_vertex_ai": True, "status": "validated"})
 
@@ -602,6 +604,7 @@ def test_api_review_gemini_failure_fail_closed(mock_config, mock_gemini, mock_se
     overrides the OWNER REVIEW state and fails closed to UNKNOWN.
     """
     mock_config.LIVE_PARTNERS = True
+    mock_config.RUNTIME_REVISION = "local"
     mock_search.return_value = ([source_state_parks, source_cfc], "search-id-abc", 15, "observed")
     # Simulate safety exception
     mock_gemini.side_effect = UnsafeModelResponseError("Forbidden word hit.")

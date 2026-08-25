@@ -13,7 +13,9 @@ logger = logging.getLogger("permit_delta.gemini")
 # Authorizing language denylist to prevent liability or false assurances
 DENYLIST_WORDS = [
     "allowed", "compliant", "valid", "approved",
-    "insured", "safe", "exempt", "proceed", "cleared"
+    "insured", "safe", "exempt", "proceed", "cleared",
+    "authorized", "permitted", "lawful", "no further submission",
+    "does not require", "go ahead", "meets requirements"
 ]
 
 class UnsafeModelResponseError(ValueError):
@@ -102,7 +104,7 @@ async def generate_explanation(
         "configured_model": "gemini-3.7-flash",
         "provider_version": "unavailable",
         "latency_ms": 0,
-        "is_vertex_ai": config.GOOGLE_GENAI_USE_VERTEXAI,
+        "is_vertex_ai": False,
         "status": "fallback"
     }
 
@@ -240,6 +242,7 @@ async def generate_explanation(
                 latency_ms = int((time.time() - start_time) * 1000)
                 metadata["latency_ms"] = latency_ms
                 metadata["provider_version"] = provider_version
+                metadata["is_vertex_ai"] = config.GOOGLE_GENAI_USE_VERTEXAI
 
                 # Enforce validation through Pydantic schema (validates max_length & non-emptiness)
                 try:

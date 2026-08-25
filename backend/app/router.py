@@ -133,7 +133,7 @@ def determine_routing_state(
             "HOLD: MATERIAL DELTA; CONTACT PARK/CFC",
             scenario["expected_destination"],
             scenario["expected_next_action"],
-            scenario["uncertainty_rating"],
+            "UNAVAILABLE" if not verified_sources else scenario["uncertainty_rating"],
             verified_sources
         )
 
@@ -144,7 +144,7 @@ def determine_routing_state(
             "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
             "Lead Permit Officer (Escalated Review)",
             "Run live partner search to establish real-time authority guidelines. Static fallbacks are unverified.",
-            "High",
+            "UNAVAILABLE",
             []
         )
         
@@ -154,7 +154,7 @@ def determine_routing_state(
             "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
             "Lead Permit Officer (Escalated Review)",
             "Authority search returned empty or unverified sources. Local fallback options are unverified.",
-            "High",
+            "UNAVAILABLE",
             []
         )
 

@@ -22,4 +22,6 @@ class Config:
     # Live partner mode
     LIVE_PARTNERS: bool = os.getenv("LIVE_PARTNERS", "False").lower() in ("true", "1", "yes")
 
+    RUNTIME_REVISION: str = os.getenv("K_REVISION", "").strip()[:100] or "local"
+
 config = Config()

@@ -31,7 +31,7 @@ The workspace includes three synthetic demo scenarios representing common produc
 
 1. **Deterministic Decision Control**: Top-level states are completely owned by local deterministic application routing logic. The Gemini model generates safety-neutral explanation narratives but may never create, weaken, or upgrade a decision state.
 2. **Hard Evidence Diversity Invariant**: For non-hold scenarios (Scenario 1 & 3), deterministic routing strictly requires **at least two distinct, allowed production-authority hosts and classes** (e.g., California State Parks and California Film Commission). If evidence is insufficient, it immediately fails closed to `UNKNOWN`.
-3. **Fail-Closed Model Safety Scanning**: If the model output contains any authorizing language (denylist: `["allowed", "compliant", "valid", "approved", "insured", "safe", "exempt", "proceed", "cleared"]`), or if the generation fails, Scenario 1 immediately fails closed from `OWNER REVIEW` to `UNKNOWN`.
+3. **Fail-Closed Model Safety Scanning**: If the model output contains authorizing language (including `allowed`, `compliant`, `valid`, `approved`, `insured`, `safe`, `exempt`, `proceed`, `cleared`, `authorized`, `permitted`, `lawful`, `no further submission`, `does not require`, `go ahead`, or `meets requirements`), or if generation fails, Scenario 1 immediately fails closed from `OWNER REVIEW` to `UNKNOWN`.
 4. **Partner-Off Clean Hand**: When `LIVE_PARTNERS=False`, the application returns **zero** retrieved sources (`[]`). It does not invent or present fabricated mock sources as if they were retrieved. Non-hold scenarios (1 & 3) route directly to `UNKNOWN`, while Scenario 2 preserves its deterministic `HOLD` state for the added generator.
 5. **Authoritative Domain Restrictions**: Live Parallel Web Search is filtered strictly to HTTPS domains for California Film Commission (`film.ca.gov`), California State Parks (`parks.ca.gov`), and the FAA (`faa.gov`).
 6. **No Secrets/Credentials in Source**: The application does not use API keys for Gemini. Production and local live inference use Google Cloud Application Default Credentials (ADC) with `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION`.
@@ -110,7 +110,7 @@ Visit `http://localhost:8000` to interact with the production bundle served dire
 
 ## Testing & Verification
 
-Focused unit and mock integration tests verify routing logic, exact-match hosts, denylist checks, Parallel response structures, and Google ADK session runner states.
+Focused unit and mock integration tests verify routing logic, exact-match hosts, denylist checks, Parallel response structures, Google ADK session runner states, explicit review activation, truthful offline/failed metadata, and frontend accessibility semantics.
 
 Run pytest inside the `backend` folder:
 ```bash
@@ -118,11 +118,17 @@ cd backend
 python -m pytest tests/ -v
 ```
 
+Run the focused frontend tests inside the `frontend` folder:
+```bash
+cd frontend
+npm test
+```
+
 ---
 
 ## Verification Status
 
 In this clean-room build turn:
-- **Local Tests and Build:** Observed and fully verified (25 focused tests pass completely, frontend compiled successfully with 0 warnings/errors).
+- **Local Tests and Build:** Observed and fully verified (25 focused backend tests and 9 focused frontend tests pass; the frontend production build compiles successfully).
 - **Python 3.12 Container Target:** Not executed because local Docker daemon is unavailable.
 - **Live Parallel and Vertex AI Execution:** **NOT RUN** (remains a deployment-time gate).

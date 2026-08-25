@@ -7,7 +7,7 @@ SCENARIOS: Dict[int, Dict[str, Any]] = {
         "description": "Internal scene-order changes and update to non-permit contact notes. No material permit scope parameters are affected.",
         "expected_state": "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED",
         "expected_destination": "Internal Production Coordinator",
-        "expected_next_action": "Log revision internally, publish updated call sheet, and archive change record. No further submission to regulatory entities is required.",
+        "expected_next_action": "Log revision internally, publish updated call sheet, and archive change record.",
         "uncertainty_rating": "Low",
         "baseline": {
             "permit_id": "PERMIT-2026-089A",
@@ -74,10 +74,10 @@ SCENARIOS: Dict[int, Dict[str, Any]] = {
     3: {
         "id": 3,
         "name": "Scenario 3: Authority Conflict (Drone Short-Notice)",
-        "description": "Adds a commercial drone five business days before filming. Current official rules from California Film Commission, California State Parks, and the FAA are contradictory or state differing lead times (e.g., State Parks requires 10-30 days, CFC lists 4 business days, FAA waivers can take weeks), causing a source conflict or uncertainty in lead-time rules.",
+        "description": "Adds a commercial drone five business days before filming. Current official rules from California Film Commission, California State Parks, and the FAA are contradictory or state differing lead times, causing a source conflict or uncertainty in lead-time rules.",
         "expected_state": "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
         "expected_destination": "Lead Permit Officer (Escalated Review)",
-        "expected_next_action": "Immediately contact the Lead Permit Officer at California State Parks and the California Film Commission. The short timeline (5 business days) conflicts with several official agency guidelines (State Parks require 10-30 days; CFC lists 4 days but warns of park approval backlogs).",
+        "expected_next_action": "Immediately contact the Lead Permit Officer at California State Parks and the California Film Commission. The short timeline conflicts with several official agency guidelines.",
         "uncertainty_rating": "High",
         "baseline": {
             "permit_id": "PERMIT-2026-089A",

@@ -19,6 +19,7 @@ class AppReadiness(BaseModel):
     vertex_ai_configured: bool
     google_genai_use_vertexai: bool
     configured_mode: Literal["Live Mode Configured (Unverified)", "Live Mode Requested (Credentials Incomplete)", "Offline Safety Fallback"]
+    runtime_revision: str = Field(default="local", max_length=100)
 
 class SearchMetadata(BaseModel):
     status: Literal["observed", "failed", "skipped"]
@@ -45,7 +46,7 @@ class ReviewResult(BaseModel):
     next_action: str = Field(..., max_length=500)
     sources: List[SourceEvidence]
     source_freshness: Literal["Current/Fresh", "Unavailable: no retained current evidence"]
-    uncertainty_rating: Literal["Low", "Medium", "High"]
+    uncertainty_rating: Literal["Low", "Medium", "High", "UNAVAILABLE"]
     readiness: AppReadiness
     search_metadata: SearchMetadata
     model_metadata: ModelMetadata

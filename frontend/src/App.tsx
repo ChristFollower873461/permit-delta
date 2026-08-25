@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
   Search, 
-  CheckCircle, 
   HelpCircle, 
   ArrowRight, 
   AlertTriangle, 
@@ -35,6 +34,7 @@ interface AppReadiness {
   vertex_ai_configured: boolean;
   google_genai_use_vertexai: boolean;
   configured_mode: string;
+  runtime_revision: string;
 }
 
 interface SearchMetadata {
@@ -74,7 +74,6 @@ export default function App() {
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [readiness, setReadiness] = useState<AppReadiness | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [acknowledged, setAcknowledged] = useState<boolean>(false);
 
   // Load scenarios and readiness statuses on mount
   useEffect(() => {
@@ -101,18 +100,10 @@ export default function App() {
     initData();
   }, []);
 
-  // Run operational review whenever scenario changes
-  useEffect(() => {
-    if (selectedScenarioId !== null) {
-      triggerReview(selectedScenarioId);
-    }
-  }, [selectedScenarioId]);
-
   const triggerReview = async (scenarioId: number) => {
     setLoading(true);
     setReviewResult(null);
     setError(null);
-    setAcknowledged(false);
     try {
       const response = await fetch('/api/review', {
         method: 'POST',
@@ -175,6 +166,10 @@ export default function App() {
         </div>
       </header>
 
+      <div className="synthetic-warning">
+        <strong>SYNTHETIC DEMONSTRATION DATA:</strong> This package contains no real permit or customer file.
+      </div>
+
       {error && (
         <div style={{ padding: '12px', border: '1px solid #ef4444', backgroundColor: '#fef2f2', color: '#b91c1c', borderRadius: '2px', marginBottom: '24px', fontFamily: 'monospace', fontSize: '12px' }}>
           <strong>CONNECTION ERROR:</strong> {error}
@@ -190,10 +185,12 @@ export default function App() {
           {/* Section 1: Scenario Configuration */}
           <div className="section-box">
             <h2 className="section-box-title">Revisions To Process</h2>
-            <div className="scenario-list">
+            <div className="scenario-list" role="listbox" aria-label="Scenarios">
               {scenarios.map((sc) => (
                 <button
                   key={sc.id}
+                  role="option"
+                  aria-selected={selectedScenarioId === sc.id}
                   onClick={() => setSelectedScenarioId(sc.id)}
                   className={`scenario-button ${selectedScenarioId === sc.id ? 'selected' : ''}`}
                   disabled={loading}
@@ -206,6 +203,14 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => triggerReview(selectedScenarioId!)}
+              disabled={loading || selectedScenarioId === null}
+              className="run-review-button"
+              aria-label="Run Review"
+            >
+              {loading ? 'Running...' : 'Run Review'}
+            </button>
           </div>
 
           {/* Section 2: Non-Authorizing Acknowledgment Receipt */}
@@ -214,48 +219,77 @@ export default function App() {
               <div className="receipt-title">Review Receipt</div>
               <div className="receipt-row">
                 <span>Correlation ID:</span>
-                <span style={{ fontWeight: 'bold' }}>{reviewResult.correlation_id.substring(0, 8)}...</span>
+                <span style={{ fontWeight: 'bold' }}>{reviewResult.correlation_id}</span>
               </div>
               <div className="receipt-row">
                 <span>Timestamp:</span>
-                <span>{new Date(reviewResult.timestamp).toLocaleTimeString()}</span>
+                <span>{reviewResult.timestamp}</span>
               </div>
               <div className="receipt-row">
                 <span>Reviewer State:</span>
                 <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
-                  {reviewResult.state.includes("OWNER") ? "Owner Review" : reviewResult.state.includes("HOLD") ? "Hold" : "Unknown"}
+                  {reviewResult.state}
                 </span>
               </div>
               <div className="receipt-row">
                 <span>Destination:</span>
                 <span>{reviewResult.destination}</span>
               </div>
+              <div className="receipt-row">
+                <span>Search Status:</span>
+                <span>
+                  {reviewResult.search_metadata.status === 'observed'
+                    ? `OBSERVED (${reviewResult.search_metadata.latency_ms}ms)`
+                    : reviewResult.search_metadata.status === 'failed'
+                      ? 'FAILED (EXECUTION DID NOT COMPLETE)'
+                      : `${reviewResult.search_metadata.status.toUpperCase()} (NOT RUN)`}
+                </span>
+              </div>
+              <div className="receipt-row">
+                <span>Search ID:</span>
+                <span>{reviewResult.search_metadata.status === 'observed' ? reviewResult.search_metadata.provider_response_id : 'NOT OBSERVED'}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Sources Retained:</span>
+                <span>{reviewResult.search_metadata.retained_source_count}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Model Status:</span>
+                <span>
+                  {reviewResult.model_metadata.status === 'validated'
+                    ? `VALIDATED (${reviewResult.model_metadata.latency_ms}ms)`
+                    : reviewResult.model_metadata.status === 'failed'
+                      ? 'FAILED (EXECUTION DID NOT COMPLETE)'
+                      : `${reviewResult.model_metadata.status.toUpperCase()} (NOT RUN)`}
+                </span>
+              </div>
+              <div className="receipt-row">
+                <span>Configured Model:</span>
+                <span>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Provider Version:</span>
+                <span>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Observed Vertex:</span>
+                <span>{reviewResult.model_metadata.is_vertex_ai ? "TRUE" : "NOT OBSERVED"}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Runtime Revision:</span>
+                <span>{reviewResult.readiness.runtime_revision}</span>
+              </div>
               
               <div className="receipt-footer">
-                <label className="acknowledge-checkbox">
-                  <input 
-                    type="checkbox" 
-                    checked={acknowledged} 
-                    onChange={(e) => setAcknowledged(e.target.checked)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <span>Log Operational Review</span>
-                </label>
-                <p style={{ fontSize: '9px', color: '#666', textAlign: 'center', marginTop: '4px', fontStyle: 'italic' }}>
-                  This acts as a receipt of routing determination. This is decision support only and does NOT constitute formal agency approval or insurance clearance.
+                <p style={{ fontSize: '11px', color: '#666', textAlign: 'center', marginTop: '4px', fontStyle: 'italic' }}>
+                  This acts as a receipt of routing determination. This is session display only and is not stored.
                 </p>
-                {acknowledged && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#15803d', fontWeight: 'bold', fontSize: '10px', marginTop: '4px' }}>
-                    <CheckCircle size={12} /> RECORD LOGGED SECURELY
-                  </div>
-                )}
               </div>
             </div>
           )}
         </aside>
 
-        {/* Main Panel - Baseline-vs-Revision & Evaluation Result */}
-        <main className="dashboard-workspace">
+        <main className="dashboard-workspace" aria-live="polite" aria-busy={loading}>
           {loading ? (
             <div className="section-box" style={{ flexGrow: 1, justifyContent: 'center' }}>
               <div className="loading-overlay">
@@ -366,7 +400,7 @@ export default function App() {
                 </div>
                 <div className="meta-status-pill" style={{ justifyContent: 'space-between', padding: '8px 12px' }}>
                   <span style={{ color: '#666' }}>Evidence Uncertainty Rating:</span>
-                  <span style={{ fontWeight: 'bold', color: reviewResult.uncertainty_rating === 'High' ? '#b91c1c' : '#15803d' }}>
+                  <span style={{ fontWeight: 'bold', color: reviewResult.uncertainty_rating === 'High' ? '#b91c1c' : reviewResult.uncertainty_rating === 'Low' ? '#15803d' : '#b45309' }}>
                     {reviewResult.uncertainty_rating}
                   </span>
                 </div>
@@ -392,18 +426,18 @@ export default function App() {
                 </div>
 
                 {/* Truthful observed Model Run performance metadata */}
-                <div style={{ marginTop: '12px', borderTop: '1px dashed #e5e7eb', paddingTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '11px', fontFamily: 'monospace' }}>
+                <div className="metadata-grid">
                   <div>
-                    <span style={{ color: '#666' }}>Configured Model:</span> <strong>{reviewResult.model_metadata.configured_model}</strong>
+                    <span className="meta-label">Configured Model:</span> <strong>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#666' }}>Model Run Latency:</span> <strong>{reviewResult.model_metadata.latency_ms}ms</strong>
+                    <span className="meta-label">Model Run Latency:</span> <strong>{reviewResult.model_metadata.status === 'validated' ? `${reviewResult.model_metadata.latency_ms}ms` : reviewResult.model_metadata.status === 'failed' ? 'NOT OBSERVED' : 'NOT RUN'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#666' }}>Provider Engine Version:</span> <strong>{reviewResult.model_metadata.provider_version}</strong>
+                    <span className="meta-label">Provider Engine Version:</span> <strong>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#666' }}>Model Run Status:</span> <strong style={{ color: reviewResult.model_metadata.status === 'validated' ? '#15803d' : reviewResult.model_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.model_metadata.status.toUpperCase()}</strong>
+                    <span className="meta-label">Model Run Status:</span> <strong style={{ color: reviewResult.model_metadata.status === 'validated' ? '#15803d' : reviewResult.model_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.model_metadata.status.toUpperCase()}</strong>
                   </div>
                 </div>
               </div>
@@ -414,11 +448,11 @@ export default function App() {
                   <Search size={14} /> Authoritative Reference Sources (Parallel Web Search SDK)
                 </h3>
                 {/* Search metadata status details */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px', fontSize: '10px', fontFamily: 'monospace', color: '#666', borderBottom: '1px dashed #e5e7eb', paddingBottom: '8px', marginBottom: '8px' }}>
-                  <div>Search Status: <strong style={{ color: reviewResult.search_metadata.status === 'observed' ? '#15803d' : reviewResult.search_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.search_metadata.status.toUpperCase()}</strong></div>
-                  <div>Search Latency: <strong>{reviewResult.search_metadata.latency_ms}ms</strong></div>
-                  <div>Sources Retained: <strong>{reviewResult.search_metadata.retained_source_count}</strong></div>
-                  <div>Provider ID: <strong>{reviewResult.search_metadata.provider_response_id}</strong></div>
+                <div className="metadata-grid" style={{ borderBottom: '1px dashed #e5e7eb', paddingBottom: '8px', marginBottom: '8px' }}>
+                  <div><span className="meta-label">Search Status:</span> <strong style={{ color: reviewResult.search_metadata.status === 'observed' ? '#15803d' : reviewResult.search_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.search_metadata.status.toUpperCase()}</strong></div>
+                  <div><span className="meta-label">Search Latency:</span> <strong>{reviewResult.search_metadata.status === 'observed' || reviewResult.search_metadata.status === 'failed' ? `${reviewResult.search_metadata.latency_ms}ms` : 'NOT RUN'}</strong></div>
+                  <div><span className="meta-label">Sources Retained:</span> <strong>{reviewResult.search_metadata.retained_source_count}</strong></div>
+                  <div><span className="meta-label">Provider ID:</span> <strong>{reviewResult.search_metadata.status === 'observed' ? reviewResult.search_metadata.provider_response_id : 'NOT OBSERVED'}</strong></div>
                 </div>
                 {reviewResult.sources.length === 0 ? (
                   <p style={{ fontStyle: 'italic', color: '#666', fontSize: '11px' }}>

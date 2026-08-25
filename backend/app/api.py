@@ -42,7 +42,8 @@ def get_readiness():
         parallel_configured=parallel_configured,
         vertex_ai_configured=vertex_ai_configured,
         google_genai_use_vertexai=vertex_enabled,
-        configured_mode=configured_mode
+        configured_mode=configured_mode,
+        runtime_revision=config.RUNTIME_REVISION
     )
 
 @api_router.post("/review", response_model=ReviewResult)
@@ -114,7 +115,7 @@ async def run_review(payload: ReviewRequest):
         configured_model="gemini-3.7-flash",
         provider_version="unavailable",
         latency_ms=0,
-        is_vertex_ai=config.GOOGLE_GENAI_USE_VERTEXAI,
+        is_vertex_ai=False,
         status="fallback"
     )
     
@@ -143,7 +144,7 @@ async def run_review(payload: ReviewRequest):
                 configured_model=metadata_dict.get("configured_model", "gemini-3.7-flash"),
                 provider_version=metadata_dict.get("provider_version", "unavailable"),
                 latency_ms=metadata_dict.get("latency_ms", 0),
-                is_vertex_ai=metadata_dict.get("is_vertex_ai", config.GOOGLE_GENAI_USE_VERTEXAI),
+                is_vertex_ai=metadata_dict.get("is_vertex_ai", False),
                 status=metadata_dict.get("status", "fallback")
             )
         except UnsafeModelResponseError:
@@ -195,7 +196,8 @@ async def run_review(payload: ReviewRequest):
         parallel_configured=parallel_configured,
         vertex_ai_configured=vertex_ai_configured,
         google_genai_use_vertexai=vertex_enabled,
-        configured_mode=configured_mode
+        configured_mode=configured_mode,
+        runtime_revision=config.RUNTIME_REVISION
     )
 
     return ReviewResult(
