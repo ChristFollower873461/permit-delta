@@ -7,7 +7,12 @@ from app.models import ReviewRequest, ReviewResult, AppReadiness, ModelMetadata,
 from app.scenarios import SCENARIOS
 from app.search import execute_authority_search
 from app.router import determine_routing_state
-from app.gemini import generate_explanation, get_fallback_explanation, UnsafeModelResponseError
+from app.gemini import (
+    UnsafeModelResponseError,
+    generate_explanation,
+    get_fallback_explanation,
+    get_safety_rejection_explanation,
+)
 
 logger = logging.getLogger("permit_delta.api")
 api_router = APIRouter(prefix="/api")
@@ -119,12 +124,14 @@ async def run_review(payload: ReviewRequest):
 
     # 4. Generate Safety-Neutral Explanation via Gemini 3.7 Flash
     gemini_failed = False
+    safety_rejected = False
     model_metadata = ModelMetadata(
         configured_model="gemini-3.7-flash",
         provider_version="unavailable",
         latency_ms=0,
         is_vertex_ai=False,
-        status="fallback"
+        status="fallback",
+        output_used=False,
     )
     
     # Strict validation 1: Missing Vertex AI configuration while LIVE_PARTNERS is True is a raised model failure
@@ -153,13 +160,28 @@ async def run_review(payload: ReviewRequest):
                 provider_version=metadata_dict.get("provider_version", "unavailable"),
                 latency_ms=metadata_dict.get("latency_ms", 0),
                 is_vertex_ai=metadata_dict.get("is_vertex_ai", False),
-                status=metadata_dict.get("status", "fallback")
+                status=metadata_dict.get("status", "fallback"),
+                output_used=metadata_dict.get(
+                    "output_used", metadata_dict.get("status") == "validated"
+                ),
             )
-        except UnsafeModelResponseError:
+        except UnsafeModelResponseError as exc:
             logger.error(f"[{correlation_id}] Safety Check Failed: Model output contains authorizing language. Forcing model failure.")
             gemini_failed = True
+            safety_rejected = True
             explanation = get_fallback_explanation(payload.scenario_id, "UNKNOWN", "Lead Permit Officer (Escalated Review)")
-            model_metadata.status = "failed"
+            rejected = exc.metadata
+            if rejected.get("provider_version", "unavailable") != "unavailable":
+                model_metadata = ModelMetadata(
+                    configured_model=rejected.get("configured_model", "gemini-3.7-flash"),
+                    provider_version=rejected.get("provider_version", "unavailable"),
+                    latency_ms=rejected.get("latency_ms", 0),
+                    is_vertex_ai=rejected.get("is_vertex_ai", False),
+                    status="safety_rejected",
+                    output_used=False,
+                )
+            else:
+                model_metadata.status = "failed"
         except Exception:
             logger.error(f"[{correlation_id}] Gemini/ADK inference failed or malformed.")
             gemini_failed = True
@@ -176,6 +198,10 @@ async def run_review(payload: ReviewRequest):
             destination = "Lead Permit Officer (Escalated Review)"
             next_action = "Escalate review. AI model response failed safety scanning guidelines or is unconfigured."
             uncertainty = "High"
+        if safety_rejected:
+            explanation = get_safety_rejection_explanation(state, destination)
+        else:
+            explanation = get_fallback_explanation(payload.scenario_id, state, destination)
 
     # 6. Evaluate Source Freshness truthfully
     if not verified_sources:

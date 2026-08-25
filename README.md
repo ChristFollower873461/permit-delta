@@ -131,7 +131,7 @@ npm test
 ## Verification Status
 
 For this release candidate:
-- **Local Tests and Build:** Observed and fully verified (27 focused backend tests and 11 focused frontend tests pass; the frontend production build compiles successfully).
+- **Local Tests and Build:** Observed and fully verified (28 focused backend tests and 12 focused frontend tests pass; the frontend production build compiles successfully).
 - **Bounded Local Live Canary:** Release ancestor `75e9330` completed one explicit Scenario 1 application run against Parallel Search and Vertex AI. It retained three allowed official sources, rejected returned sources outside the configured allowlist, and recorded the provider-returned `gemini-3.7-flash` model version. This proves the combined local application path on that ancestor only; final-candidate hosted replay remains required.
-- **Python 3.12 Container Target:** Not executed because the local Docker daemon was unavailable.
-- **Hosted Cloud Run Execution:** **NOT RUN**. Private deployment and hosted replay remain separate release gates.
+- **Python 3.12 Container Target:** Observed through one successful Cloud Build and healthy private Cloud Run startup at commit `810471e`; no local Docker claim is made.
+- **Hosted Cloud Run Execution:** Private commit `810471e` deployment is observed. Hosted Scenario 2 passed Parallel plus Vertex validation after the secret-format repair; hosted Scenario 1 then exercised the model-output safety rejection and stopped the no-retry sequence. The safety-receipt correction in this source candidate remains local until a separately authorized rebuild and private tagged revision.

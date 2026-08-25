@@ -20,7 +20,10 @@ DENYLIST_WORDS = [
 
 class UnsafeModelResponseError(ValueError):
     """Raised when the Gemini model includes forbidden authorizing language."""
-    pass
+
+    def __init__(self, message: str, metadata: Dict[str, Any] | None = None):
+        super().__init__(message)
+        self.metadata = dict(metadata or {})
 
 class GeminiExplanationSchema(BaseModel):
     explanation: str = Field(..., max_length=2000, description="The comprehensive, safety-neutral review explanation narrative.")
@@ -84,6 +87,17 @@ def get_fallback_explanation(scenario_id: int, state: str, destination: str) -> 
                 f"This represents decision support only."
             )
 
+
+def get_safety_rejection_explanation(state: str, destination: str) -> str:
+    return (
+        "Permit Delta discarded the model explanation because it crossed the "
+        "non-authorizing language boundary. "
+        f"Deterministic routing is {state}. "
+        f"This review is routed to the {destination} for human coordination. "
+        "The rejected model text is not used. This represents decision support only."
+    )
+
+
 async def generate_explanation(
     scenario_id: int,
     state: str,
@@ -105,7 +119,8 @@ async def generate_explanation(
         "provider_version": "unavailable",
         "latency_ms": 0,
         "is_vertex_ai": False,
-        "status": "fallback"
+        "status": "fallback",
+        "output_used": False
     }
 
     # Validation constraint 1: Do not call Gemini when there is no retained evidence
@@ -136,11 +151,11 @@ async def generate_explanation(
                 "You are an expert film production permit compliance assistant. "
                 "Your job is to write a highly precise, neutral explanation of the permit state and the next human review destination. "
                 "CRITICAL MANDATES:\n"
-                "1. This is decision support only, NEVER legal advice or autonomous approval.\n"
-                "2. NEVER use authorizing language such as: allowed, compliant, valid, approved, insured, safe, exempt, proceed, or cleared.\n"
-                "3. Frame everything as a recommendation for human review and coordination.\n"
-                "4. Restrict all conclusions to the provided authoritative source evidence. Do not hallucinate external policies.\n"
-                "5. Start the response with a clear summary of the delta and why the specific state applies."
+                "1. Write only about the submitted differences, retained evidence, deterministic route, and named human handoff.\n"
+                "2. Make no statement about permission, legal standing, policy satisfaction, risk status, readiness to act, or whether requirements have been met.\n"
+                "3. Do not quote or restate those prohibited claim categories, even as a disclaimer.\n"
+                "4. Restrict every observation to the supplied evidence and do not introduce external policy claims.\n"
+                "5. Use neutral process language and end with the concrete coordination step for the named human destination."
             )
 
             prompt = (
@@ -153,7 +168,7 @@ async def generate_explanation(
                 f"{sources_str}\n\n"
                 f"Please explain this state, why it applies based on the retrieved sources, and detail the actions "
                 f"the production coordinator must take at the destination: {destination}. "
-                f"Do not include any forbidden authorizing keywords. Return your response under the explanation field."
+                f"Use only neutral evidence, routing, and handoff language. Return your response under the explanation field."
             )
 
             logger.info("Configuring single-agent path via Google ADK 2.7.1 & GenAI Client...")
@@ -172,7 +187,7 @@ async def generate_explanation(
                 output_schema=GeminiExplanationSchema,
                 generate_content_config=types.GenerateContentConfig(
                     max_output_tokens=1000,
-                    temperature=0.1
+                    temperature=0.0
                 )
             )
 
@@ -255,11 +270,17 @@ async def generate_explanation(
                 # Scan for denylisted authorizing language using word boundaries
                 if is_unsafe_text(final_text):
                     logger.error("Safety violation: Gemini model generated forbidden authorizing language.")
-                    raise UnsafeModelResponseError("Model response contains forbidden authorizing language.")
+                    metadata["status"] = "safety_rejected"
+                    metadata["output_used"] = False
+                    raise UnsafeModelResponseError(
+                        "Model response contains forbidden authorizing language.",
+                        metadata=metadata,
+                    )
 
                 # Enforce final character bound and truncate
                 final_text = final_text.strip()[:2000]
                 metadata["status"] = "validated"
+                metadata["output_used"] = True
                 return final_text, metadata
 
         except Exception:

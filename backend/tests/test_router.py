@@ -400,13 +400,14 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
         assert explanation == "This is an unreviewed summary. No forbidden words."
         assert metadata["provider_version"] == "gemini-3.7-flash-v1.0"
         assert metadata["status"] == "validated"
+        assert metadata["output_used"] is True
 
         # Test Unsafe response denylist trigger
         class UnsafeOutput(TestBaseModel):
             explanation: str = "This plan is approved and safe to proceed."
         mock_event.output = UnsafeOutput()
 
-        with pytest.raises(UnsafeModelResponseError):
+        with pytest.raises(UnsafeModelResponseError) as unsafe_error:
             await generate_explanation(
                 scenario_id=1,
                 state="OWNER REVIEW",
@@ -414,6 +415,9 @@ async def test_adk_271_runner_execution_and_safety_checks(mock_config):
                 differences=["Scene schedule ordering changed."],
                 sources=[MagicMock()]
             )
+        assert unsafe_error.value.metadata["provider_version"] == "gemini-3.7-flash-v1.0"
+        assert unsafe_error.value.metadata["status"] == "safety_rejected"
+        assert unsafe_error.value.metadata["output_used"] is False
 
         # Test empty or whitespace output rejection
         class EmptyOutput(TestBaseModel):
@@ -611,6 +615,7 @@ def test_api_review_success_control_flow(mock_config, mock_gemini, mock_search, 
     assert data["state"] == "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED"
     assert data["model_metadata"]["status"] == "validated"
     assert data["model_metadata"]["provider_version"] == "v1.0-mock"
+    assert data["model_metadata"]["output_used"] is True
     assert data["partner_mode"] == "live"
 
     # Requirement 3: Assert that retained_source_count == len(sources)
@@ -639,6 +644,7 @@ def test_api_controlled_replay_skips_live_model_path(mock_config, mock_gemini, m
     assert data["sources"] == []
     assert data["search_metadata"]["status"] == "skipped"
     assert data["model_metadata"]["status"] == "skipped"
+    assert data["model_metadata"]["output_used"] is False
     mock_search.assert_awaited_once_with(
         1,
         "administrative film permit schedule changes",
@@ -666,3 +672,47 @@ def test_api_review_gemini_failure_fail_closed(mock_config, mock_gemini, mock_se
     assert data["state"] == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
     assert data["destination"] == "Lead Permit Officer (Escalated Review)"
     assert data["model_metadata"]["status"] == "failed"
+    assert data["model_metadata"]["output_used"] is False
+
+
+@patch("app.api.execute_authority_search", new_callable=AsyncMock)
+@patch("app.api.generate_explanation", new_callable=AsyncMock)
+@patch("app.api.config")
+def test_api_safety_rejection_preserves_observed_model_receipt(
+    mock_config, mock_gemini, mock_search, source_state_parks, source_cfc
+):
+    mock_config.LIVE_PARTNERS = True
+    mock_config.RUNTIME_REVISION = "test-revision"
+    mock_search.return_value = (
+        [source_state_parks, source_cfc],
+        "search-id-abc",
+        15,
+        "observed",
+    )
+    mock_gemini.side_effect = UnsafeModelResponseError(
+        "Forbidden word hit.",
+        metadata={
+            "configured_model": "gemini-3.7-flash",
+            "provider_version": "gemini-3.7-flash",
+            "latency_ms": 120,
+            "is_vertex_ai": True,
+            "status": "safety_rejected",
+            "output_used": False,
+        },
+    )
+
+    response = client.post("/api/review", json={"scenario_id": 1})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["state"] == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert data["model_metadata"] == {
+        "configured_model": "gemini-3.7-flash",
+        "provider_version": "gemini-3.7-flash",
+        "latency_ms": 120,
+        "is_vertex_ai": True,
+        "status": "safety_rejected",
+        "output_used": False,
+    }
+    assert not is_unsafe_text(data["explanation"])
+    assert "discarded the model explanation" in data["explanation"]
+    assert "rejected model text is not used" in data["explanation"]

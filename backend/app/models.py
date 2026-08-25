@@ -36,7 +36,8 @@ class ModelMetadata(BaseModel):
     provider_version: str = Field(..., max_length=100)  # actual version or "unavailable"
     latency_ms: int = Field(..., ge=0)
     is_vertex_ai: bool
-    status: Literal["validated", "failed", "skipped", "fallback"]
+    status: Literal["validated", "safety_rejected", "failed", "skipped", "fallback"]
+    output_used: bool
 
 class ReviewResult(BaseModel):
     correlation_id: str = Field(..., max_length=100)

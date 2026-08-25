@@ -49,8 +49,12 @@ interface ModelMetadata {
   provider_version: string;
   latency_ms: number;
   is_vertex_ai: boolean;
-  status: string; // "validated", "failed", "skipped", "fallback"
+  status: string; // "validated", "safety_rejected", "failed", "skipped", "fallback"
+  output_used: boolean;
 }
+
+const modelRunWasObserved = (metadata: ModelMetadata) =>
+  metadata.status === 'validated' || metadata.status === 'safety_rejected';
 
 interface ReviewResult {
   correlation_id: string;
@@ -305,6 +309,8 @@ export default function App() {
                 <span>
                   {reviewResult.model_metadata.status === 'validated'
                     ? `VALIDATED (${reviewResult.model_metadata.latency_ms}ms)`
+                    : reviewResult.model_metadata.status === 'safety_rejected'
+                      ? `REJECTED BY SAFETY GATE (${reviewResult.model_metadata.latency_ms}ms)`
                     : reviewResult.model_metadata.status === 'failed'
                       ? 'FAILED (EXECUTION DID NOT COMPLETE)'
                       : `${reviewResult.model_metadata.status.toUpperCase()} (NOT RUN)`}
@@ -312,15 +318,19 @@ export default function App() {
               </div>
               <div className="receipt-row">
                 <span>Configured Model:</span>
-                <span>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</span>
+                <span>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</span>
               </div>
               <div className="receipt-row">
                 <span>Provider Version:</span>
-                <span>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</span>
+                <span>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</span>
               </div>
               <div className="receipt-row">
                 <span>Observed Vertex:</span>
                 <span>{reviewResult.model_metadata.is_vertex_ai ? "TRUE" : "NOT OBSERVED"}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Model Output Used:</span>
+                <span>{reviewResult.model_metadata.output_used ? 'YES' : 'NO'}</span>
               </div>
               <div className="receipt-row">
                 <span>Runtime Revision:</span>
@@ -457,7 +467,7 @@ export default function App() {
               {/* Step 4: Reasoning & Explanation Basis */}
               <div className="section-box">
                 <h3 className="section-box-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <BookOpen size={14} /> {reviewResult.model_metadata.status === 'validated' ? 'REASONING & EXPLANATION (GEMINI MODEL OUTPUT)' : 'REASONING & EXPLANATION (LOCAL SAFETY FALLBACK)'}
+                  <BookOpen size={14} /> {reviewResult.model_metadata.status === 'validated' ? 'REASONING & EXPLANATION (GEMINI MODEL OUTPUT)' : reviewResult.model_metadata.status === 'safety_rejected' ? 'REASONING & EXPLANATION (MODEL OUTPUT REJECTED; LOCAL SAFETY FALLBACK)' : 'REASONING & EXPLANATION (LOCAL SAFETY FALLBACK)'}
                 </h3>
                 <div className="explanation-text">
                   {reviewResult.explanation.split('\n\n').map((paragraph, index) => {
@@ -476,16 +486,16 @@ export default function App() {
                 {/* Truthful observed Model Run performance metadata */}
                 <div className="metadata-grid">
                   <div>
-                    <span className="meta-label">Configured Model:</span> <strong>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</strong>
+                    <span className="meta-label">Configured Model:</span> <strong>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Model Run Latency:</span> <strong>{reviewResult.model_metadata.status === 'validated' ? `${reviewResult.model_metadata.latency_ms}ms` : reviewResult.model_metadata.status === 'failed' ? 'NOT OBSERVED' : 'NOT RUN'}</strong>
+                    <span className="meta-label">Model Run Latency:</span> <strong>{modelRunWasObserved(reviewResult.model_metadata) ? `${reviewResult.model_metadata.latency_ms}ms` : reviewResult.model_metadata.status === 'failed' ? 'NOT OBSERVED' : 'NOT RUN'}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Provider Engine Version:</span> <strong>{reviewResult.model_metadata.status === 'validated' ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</strong>
+                    <span className="meta-label">Provider Engine Version:</span> <strong>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</strong>
                   </div>
                   <div>
-                    <span className="meta-label">Model Run Status:</span> <strong style={{ color: reviewResult.model_metadata.status === 'validated' ? '#15803d' : reviewResult.model_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.model_metadata.status.toUpperCase()}</strong>
+                    <span className="meta-label">Model Run Status:</span> <strong style={{ color: reviewResult.model_metadata.status === 'validated' ? '#15803d' : reviewResult.model_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.model_metadata.status.toUpperCase().replace('_', ' ')}</strong>
                   </div>
                 </div>
               </div>

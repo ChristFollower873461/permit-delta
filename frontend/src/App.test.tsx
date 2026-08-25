@@ -54,7 +54,8 @@ const mockReviewResult = {
     provider_version: "unavailable",
     latency_ms: 0,
     is_vertex_ai: false,
-    status: "skipped"
+    status: "skipped",
+    output_used: false
   },
   timestamp: "2026-08-24T00:00:00Z"
 };
@@ -308,5 +309,39 @@ describe('Permit Delta App', () => {
     const postCalls = (global.fetch as any).mock.calls.filter((call: any) => call[1]?.method === 'POST');
     expect(postCalls.length).toBe(2);
     expect(JSON.parse(postCalls[1][1].body)).toEqual({ scenario_id: 1, partner_mode: 'controlled_replay_off' });
+  });
+
+  test('12. A rejected model run remains observed while its output stays unused', async () => {
+    const rejectedResult = {
+      ...mockReviewResult,
+      state: 'UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY',
+      model_metadata: {
+        configured_model: 'gemini-3.7-flash',
+        provider_version: 'gemini-3.7-flash',
+        latency_ms: 120,
+        is_vertex_ai: true,
+        status: 'safety_rejected',
+        output_used: false
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url === '/api/review') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(rejectedResult) });
+      }
+      if (url === '/api/scenarios') return Promise.resolve({ ok: true, json: () => Promise.resolve(mockScenarios) });
+      if (url === '/api/readiness') return Promise.resolve({ ok: true, json: () => Promise.resolve(mockReadiness) });
+      return Promise.reject(new Error('not found'));
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Scenario 1')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Run Review/i }));
+    await waitFor(() => expect(screen.getByText(/Review Receipt/i)).toBeInTheDocument());
+
+    expect(screen.getByText(/REJECTED BY SAFETY GATE \(120ms\)/i)).toBeInTheDocument();
+    expect(screen.getAllByText('gemini-3.7-flash').length).toBeGreaterThan(0);
+    expect(screen.getByText(/MODEL OUTPUT REJECTED; LOCAL SAFETY FALLBACK/i)).toBeInTheDocument();
   });
 });
