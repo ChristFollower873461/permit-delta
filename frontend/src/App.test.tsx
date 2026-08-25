@@ -9,8 +9,8 @@ const mockScenarios = [
     name: "Scenario 1",
     description: "Desc 1",
     expected_state: "OWNER REVIEW",
-    baseline: { permit_id: "123" },
-    revised: { permit_id: "123" },
+    baseline: { permit_id: "123", generator: "None" },
+    revised: { permit_id: "123", generator: "None" },
     differences: []
   },
   {
@@ -18,8 +18,8 @@ const mockScenarios = [
     name: "Scenario 2",
     description: "Desc 2",
     expected_state: "HOLD",
-    baseline: { permit_id: "123" },
-    revised: { permit_id: "123" },
+    baseline: { permit_id: "123", generator: "None" },
+    revised: { permit_id: "123", generator: "75 kW Generator" },
     differences: []
   }
 ];
@@ -99,8 +99,10 @@ describe('Permit Delta App', () => {
   test('2. Selecting a scenario updates the comparison but does not call POST /api/review', async () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('Scenario 1')).toBeInTheDocument());
+    expect(screen.getByText('Baseline vs Proposed Plan Revision')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Scenario 2'));
+    expect(screen.getByText('75 kW Generator')).toBeInTheDocument();
 
     const fetchCalls = (global.fetch as any).mock.calls;
     const postCalls = fetchCalls.filter((call: any) => call[1]?.method === 'POST');
@@ -247,5 +249,25 @@ describe('Permit Delta App', () => {
     expect(screen.queryByText(/FAILED \(NOT RUN\)/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/FAILED \(EXECUTION DID NOT COMPLETE\)/i)).toHaveLength(2);
     expect(screen.getByText('12ms')).toBeInTheDocument();
+  });
+
+  test('10. Selecting a different scenario clears the prior state and receipt before another run', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Scenario 1')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /Run Review/i }));
+    await waitFor(() => expect(screen.getByText(/Review Receipt/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED/i).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByText('Scenario 2'));
+
+    expect(screen.queryByText(/Review Receipt/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED/i)).not.toBeInTheDocument();
+    expect(screen.getByText('75 kW Generator')).toBeInTheDocument();
+
+    const fetchCalls = (global.fetch as any).mock.calls;
+    const postCalls = fetchCalls.filter((call: any) => call[1]?.method === 'POST');
+    expect(postCalls.length).toBe(1);
   });
 });

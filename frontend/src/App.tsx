@@ -191,7 +191,13 @@ export default function App() {
                   key={sc.id}
                   role="option"
                   aria-selected={selectedScenarioId === sc.id}
-                  onClick={() => setSelectedScenarioId(sc.id)}
+                  onClick={() => {
+                    if (selectedScenarioId !== sc.id) {
+                      setSelectedScenarioId(sc.id);
+                      setReviewResult(null);
+                      setError(null);
+                    }
+                  }}
                   className={`scenario-button ${selectedScenarioId === sc.id ? 'selected' : ''}`}
                   disabled={loading}
                 >
@@ -290,6 +296,72 @@ export default function App() {
         </aside>
 
         <main className="dashboard-workspace" aria-live="polite" aria-busy={loading}>
+          {selectedScenario && (
+            <div className="section-box">
+              <h3 className="section-box-title">Baseline vs Proposed Plan Revision</h3>
+              <table className="parameter-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '20%' }}>Parameter</th>
+                    <th style={{ width: '40%' }}>Issued Permit Baseline</th>
+                    <th style={{ width: '40%' }}>Revised Production Plan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="param-name">Permit ID</td>
+                    <td className="param-baseline">{selectedScenario.baseline.permit_id}</td>
+                    <td className={`param-revised ${hasFieldChanged('permit_id') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.permit_id}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="param-name">Film Date</td>
+                    <td className="param-baseline">{selectedScenario.baseline.film_date}</td>
+                    <td className={`param-revised ${hasFieldChanged('film_date') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.film_date}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="param-name">Location</td>
+                    <td className="param-baseline">{selectedScenario.baseline.location}</td>
+                    <td className={`param-revised ${hasFieldChanged('location') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.location}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="param-name">Crew Size</td>
+                    <td className="param-baseline">{selectedScenario.baseline.crew_size}</td>
+                    <td className={`param-revised ${hasFieldChanged('crew_size') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.crew_size}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="param-name">Generator</td>
+                    <td className="param-baseline">{selectedScenario.baseline.generator}</td>
+                    <td className={`param-revised ${hasFieldChanged('generator') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.generator}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="param-name">UAS / Drone</td>
+                    <td className="param-baseline">{selectedScenario.baseline.drone}</td>
+                    <td className={`param-revised ${hasFieldChanged('drone') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.drone}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="param-name">Description</td>
+                    <td className="param-baseline">{selectedScenario.baseline.description}</td>
+                    <td className={`param-revised ${hasFieldChanged('description') ? 'highlight' : ''}`}>
+                      {selectedScenario.revised.description}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {loading ? (
             <div className="section-box" style={{ flexGrow: 1, justifyContent: 'center' }}>
               <div className="loading-overlay">
@@ -301,72 +373,7 @@ export default function App() {
             </div>
           ) : reviewResult && selectedScenario ? (
             <>
-              {/* Step 1: Baseline versus Revision Matrix */}
-              <div className="section-box">
-                <h3 className="section-box-title">Baseline vs Proposed Plan Revision</h3>
-                <table className="parameter-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '20%' }}>Parameter</th>
-                      <th style={{ width: '40%' }}>Issued Permit Baseline</th>
-                      <th style={{ width: '40%' }}>Revised Production Plan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="param-name">Permit ID</td>
-                      <td className="param-baseline">{selectedScenario.baseline.permit_id}</td>
-                      <td className={`param-revised ${hasFieldChanged('permit_id') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.permit_id}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="param-name">Film Date</td>
-                      <td className="param-baseline">{selectedScenario.baseline.film_date}</td>
-                      <td className={`param-revised ${hasFieldChanged('film_date') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.film_date}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="param-name">Location</td>
-                      <td className="param-baseline">{selectedScenario.baseline.location}</td>
-                      <td className={`param-revised ${hasFieldChanged('location') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.location}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="param-name">Crew Size</td>
-                      <td className="param-baseline">{selectedScenario.baseline.crew_size}</td>
-                      <td className={`param-revised ${hasFieldChanged('crew_size') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.crew_size}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="param-name">Generator</td>
-                      <td className="param-baseline">{selectedScenario.baseline.generator}</td>
-                      <td className={`param-revised ${hasFieldChanged('generator') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.generator}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="param-name">UAS / Drone</td>
-                      <td className="param-baseline">{selectedScenario.baseline.drone}</td>
-                      <td className={`param-revised ${hasFieldChanged('drone') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.drone}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="param-name">Description</td>
-                      <td className="param-baseline">{selectedScenario.baseline.description}</td>
-                      <td className={`param-revised ${hasFieldChanged('description') ? 'highlight' : ''}`}>
-                        {selectedScenario.revised.description}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Step 2: Top-Level Decision Routing State Banner */}
+              {/* Top-Level Decision Routing State Banner */}
               <div className={getStateBannerClass(reviewResult.state)}>
                 <div className="state-label-container">
                   <span className="state-title">{reviewResult.state}</span>
@@ -483,7 +490,9 @@ export default function App() {
             <div className="section-box" style={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}>
               <HelpCircle size={48} style={{ opacity: 0.15 }} />
               <p style={{ color: '#666', fontSize: '12px', marginTop: '12px' }}>
-                Select a scenario to analyze and display the Operational Permit Review report.
+                {selectedScenario
+                  ? 'Review the selected revision, then run one explicit operational review.'
+                  : 'Select a scenario to analyze and display the Operational Permit Review report.'}
               </p>
             </div>
           )}
