@@ -128,7 +128,8 @@ npm test
 
 ## Verification Status
 
-In this clean-room build turn:
+For this release candidate:
 - **Local Tests and Build:** Observed and fully verified (25 focused backend tests and 9 focused frontend tests pass; the frontend production build compiles successfully).
-- **Python 3.12 Container Target:** Not executed because local Docker daemon is unavailable.
-- **Live Parallel and Vertex AI Execution:** **NOT RUN** (remains a deployment-time gate).
+- **Bounded Local Live Canary:** One explicit Scenario 1 application run completed against Parallel Search and Vertex AI. It retained three allowed official sources, rejected returned sources outside the configured allowlist, and recorded the provider-returned `gemini-3.7-flash` model version. This proves the combined local application path only; it is not hosted-runtime evidence.
+- **Python 3.12 Container Target:** Not executed because the local Docker daemon was unavailable.
+- **Hosted Cloud Run Execution:** **NOT RUN**. Private deployment and hosted replay remain separate release gates.
