@@ -65,6 +65,19 @@ body {
   align-items: center;
   gap: 6px;
   border-radius: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.meta-status-pill > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.evidence-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
 }
 
 .status-dot {
@@ -583,6 +596,26 @@ body {
   .state-label-container {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .receipt-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .receipt-row > span:last-child {
+    text-align: left;
+  }
+
+  .evidence-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .evidence-summary-grid .meta-status-pill {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 }
 

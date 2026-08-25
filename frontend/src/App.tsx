@@ -449,7 +449,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="evidence-summary-grid">
                 <div className="meta-status-pill" style={{ justifyContent: 'space-between', padding: '8px 12px' }}>
                   <span style={{ color: '#666' }}>Source Evidence Freshness:</span>
                   <span style={{ fontWeight: 'bold', color: reviewResult.source_freshness.includes('no retained') ? '#b91c1c' : '#15803d' }}>
