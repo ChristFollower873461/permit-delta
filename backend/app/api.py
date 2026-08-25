@@ -52,7 +52,11 @@ async def run_review(payload: ReviewRequest):
     Performs the operational permit review for a selected scenario.
     """
     correlation_id = str(uuid.uuid4())
-    logger.info(f"[{correlation_id}] Starting operational permit review for scenario {payload.scenario_id}")
+    effective_live_partners = config.LIVE_PARTNERS and payload.partner_mode == "live"
+    logger.info(
+        f"[{correlation_id}] Starting operational permit review for scenario {payload.scenario_id}; "
+        f"partner mode: {payload.partner_mode}"
+    )
     
     # 1. Fetch Selected Scenario Dataset
     scenario = SCENARIOS.get(payload.scenario_id)
@@ -78,7 +82,11 @@ async def run_review(payload: ReviewRequest):
     search_status = "skipped"
     
     try:
-        raw_sources, search_id, search_latency, search_status = await execute_authority_search(payload.scenario_id, query_category)
+        raw_sources, search_id, search_latency, search_status = await execute_authority_search(
+            payload.scenario_id,
+            query_category,
+            live_partners_enabled=effective_live_partners
+        )
     except Exception:
         logger.error(f"[{correlation_id}] Search execution encountered an error.")
         raw_sources = []
@@ -90,7 +98,7 @@ async def run_review(payload: ReviewRequest):
         state, destination, next_action, uncertainty, verified_sources = determine_routing_state(
             payload.scenario_id,
             raw_sources,
-            live_partners_enabled=config.LIVE_PARTNERS
+            live_partners_enabled=effective_live_partners
         )
     except Exception:
         logger.critical(f"[{correlation_id}] Routing engine encountered an error.")
@@ -121,7 +129,7 @@ async def run_review(payload: ReviewRequest):
     
     # Strict validation 1: Missing Vertex AI configuration while LIVE_PARTNERS is True is a raised model failure
     # Require all Vertex configurations for live mode
-    if config.LIVE_PARTNERS and (not config.GOOGLE_GENAI_USE_VERTEXAI or not config.GOOGLE_CLOUD_PROJECT):
+    if effective_live_partners and (not config.GOOGLE_GENAI_USE_VERTEXAI or not config.GOOGLE_CLOUD_PROJECT):
         logger.error(f"[{correlation_id}] Vertex AI unconfigured while LIVE_PARTNERS=True. Forcing model failure.")
         gemini_failed = True
         explanation = get_fallback_explanation(payload.scenario_id, "UNKNOWN", "Lead Permit Officer (Escalated Review)")
@@ -202,6 +210,7 @@ async def run_review(payload: ReviewRequest):
 
     return ReviewResult(
         correlation_id=correlation_id,
+        partner_mode=payload.partner_mode,
         state=state,
         explanation=explanation,
         destination=destination,

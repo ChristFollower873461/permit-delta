@@ -13,6 +13,10 @@ class SourceEvidence(BaseModel):
 
 class ReviewRequest(BaseModel):
     scenario_id: Literal[1, 2, 3] = Field(..., description="ID of the scenario: 1 (Control), 2 (Material), or 3 (Conflict)")
+    partner_mode: Literal["live", "controlled_replay_off"] = Field(
+        default="live",
+        description="Use live configured partners or a controlled zero-call outage replay."
+    )
 
 class AppReadiness(BaseModel):
     parallel_configured: bool
@@ -36,6 +40,7 @@ class ModelMetadata(BaseModel):
 
 class ReviewResult(BaseModel):
     correlation_id: str = Field(..., max_length=100)
+    partner_mode: Literal["live", "controlled_replay_off"]
     state: Literal[
         "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED", 
         "HOLD: MATERIAL DELTA; CONTACT PARK/CFC", 

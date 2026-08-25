@@ -33,7 +33,12 @@ def is_valid_production_host(url: str) -> bool:
     except Exception:
         return False
 
-async def execute_authority_search(scenario_id: int, query_purpose_category: str) -> Tuple[List[SourceEvidence], str, int, str]:
+async def execute_authority_search(
+    scenario_id: int,
+    query_purpose_category: str,
+    *,
+    live_partners_enabled: bool | None = None
+) -> Tuple[List[SourceEvidence], str, int, str]:
     """
     Executes a web search for film permit authority rules.
     If LIVE_PARTNERS=True and keys are present, uses Parallel.ai AsyncParallel SDK.
@@ -43,13 +48,23 @@ async def execute_authority_search(scenario_id: int, query_purpose_category: str
     """
     start_time = time.time()
 
+    partners_enabled = config.LIVE_PARTNERS if live_partners_enabled is None else live_partners_enabled
+
+    if not partners_enabled:
+        logger.info("Authority search skipped because partner execution is disabled for this run.")
+        return [], "unavailable", 0, "skipped"
+
+    if not config.PARALLEL_API_KEY:
+        logger.info("Authority search skipped because the Parallel credential is not configured.")
+        return [], "unavailable", 0, "skipped"
+
     # Bounded query metadata logging (Never log the full query)
     logger.info(
         f"Initiating bounded authority search. "
         f"Scenario ID: {scenario_id}, Query length: {len(query_purpose_category)}"
     )
 
-    if config.LIVE_PARTNERS and config.PARALLEL_API_KEY:
+    if partners_enabled and config.PARALLEL_API_KEY:
         try:
             from parallel import AsyncParallel
 
@@ -161,11 +176,10 @@ async def execute_authority_search(scenario_id: int, query_purpose_category: str
                         )
                     )
 
-                return validated_sources, search_id, latency_ms, "observed"
+            return validated_sources, search_id, latency_ms, "observed"
 
         except Exception:
             logger.error("Error during live AsyncParallel search execution.")
             return [], "unavailable", int((time.time() - start_time) * 1000), "failed"
 
-    # Partner-off or missing credentials: return empty search result cleanly.
     return [], "unavailable", 0, "skipped"

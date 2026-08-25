@@ -54,6 +54,7 @@ interface ModelMetadata {
 
 interface ReviewResult {
   correlation_id: string;
+  partner_mode: 'live' | 'controlled_replay_off';
   state: string;
   explanation: string;
   destination: string;
@@ -70,6 +71,7 @@ interface ReviewResult {
 export default function App() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
+  const [partnerMode, setPartnerMode] = useState<'live' | 'controlled_replay_off'>('live');
   const [loading, setLoading] = useState<boolean>(false);
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [readiness, setReadiness] = useState<AppReadiness | null>(null);
@@ -108,7 +110,7 @@ export default function App() {
       const response = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario_id: scenarioId })
+        body: JSON.stringify({ scenario_id: scenarioId, partner_mode: partnerMode })
       });
       if (!response.ok) {
         throw new Error(`Review endpoint failed with code ${response.status}`);
@@ -209,6 +211,41 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <div className="partner-mode-field">
+              <span className="partner-mode-label">Partner execution</span>
+              <div className="partner-mode-segment" role="group" aria-label="Partner execution mode">
+                <button
+                  type="button"
+                  className={`partner-mode-button ${partnerMode === 'live' ? 'selected' : ''}`}
+                  aria-pressed={partnerMode === 'live'}
+                  disabled={loading}
+                  onClick={() => {
+                    if (partnerMode !== 'live') {
+                      setPartnerMode('live');
+                      setReviewResult(null);
+                      setError(null);
+                    }
+                  }}
+                >
+                  Live partners
+                </button>
+                <button
+                  type="button"
+                  className={`partner-mode-button ${partnerMode === 'controlled_replay_off' ? 'selected' : ''}`}
+                  aria-pressed={partnerMode === 'controlled_replay_off'}
+                  disabled={loading}
+                  onClick={() => {
+                    if (partnerMode !== 'controlled_replay_off') {
+                      setPartnerMode('controlled_replay_off');
+                      setReviewResult(null);
+                      setError(null);
+                    }
+                  }}
+                >
+                  Controlled outage replay
+                </button>
+              </div>
+            </div>
             <button
               onClick={() => triggerReview(selectedScenarioId!)}
               disabled={loading || selectedScenarioId === null}
@@ -240,6 +277,10 @@ export default function App() {
               <div className="receipt-row">
                 <span>Destination:</span>
                 <span>{reviewResult.destination}</span>
+              </div>
+              <div className="receipt-row">
+                <span>Partner Mode:</span>
+                <span>{reviewResult.partner_mode === 'live' ? 'LIVE PARTNERS' : 'CONTROLLED OUTAGE REPLAY'}</span>
               </div>
               <div className="receipt-row">
                 <span>Search Status:</span>

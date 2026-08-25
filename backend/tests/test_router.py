@@ -67,7 +67,7 @@ def test_scenario_1_control_flow_requires_two_diverse_sources(source_state_parks
     )
     assert state == "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED"
     assert destination == "Internal Production Coordinator"
-    assert "Log revision internally" in next_action
+    assert "human review" in next_action
     assert uncertainty == "Low"
     assert len(verified) == 2
 
@@ -110,7 +110,8 @@ def test_scenario_2_retains_hold_even_with_one_source(source_state_parks):
         live_partners_enabled=True
     )
     assert state == "HOLD: MATERIAL DELTA; CONTACT PARK/CFC"
-    assert "Do NOT film with the generator yet" in next_action
+    assert "Pause the revised call-sheet handoff" in next_action
+    assert "Do NOT film" not in next_action
 
 def test_stale_source_causes_unknown_routing(source_state_parks, stale_source):
     """
@@ -323,6 +324,25 @@ async def test_async_parallel_lifecycle_on_exception(mock_config):
         # Verify __aexit__ was called with an exception (ValueError)
         args, kwargs = mock_client_instance.__aexit__.call_args
         assert issubclass(args[0], ValueError)
+
+@pytest.mark.anyio
+@patch("app.search.config")
+async def test_controlled_replay_override_skips_parallel_even_when_configured(mock_config):
+    mock_config.LIVE_PARTNERS = True
+    mock_config.PARALLEL_API_KEY = "test-key"
+
+    with patch("parallel.AsyncParallel", side_effect=AssertionError("Parallel must not be constructed")) as mock_class:
+        sources, search_id, latency, search_status = await execute_authority_search(
+            1,
+            "administrative film permit schedule changes",
+            live_partners_enabled=False
+        )
+
+    assert sources == []
+    assert search_id == "unavailable"
+    assert latency == 0
+    assert search_status == "skipped"
+    mock_class.assert_not_called()
 
 @pytest.mark.anyio
 @patch("app.gemini.config")
@@ -591,9 +611,40 @@ def test_api_review_success_control_flow(mock_config, mock_gemini, mock_search, 
     assert data["state"] == "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED"
     assert data["model_metadata"]["status"] == "validated"
     assert data["model_metadata"]["provider_version"] == "v1.0-mock"
+    assert data["partner_mode"] == "live"
 
     # Requirement 3: Assert that retained_source_count == len(sources)
     assert data["search_metadata"]["retained_source_count"] == len(data["sources"])
+
+@patch("app.api.execute_authority_search", new_callable=AsyncMock)
+@patch("app.api.generate_explanation", new_callable=AsyncMock)
+@patch("app.api.config")
+def test_api_controlled_replay_skips_live_model_path(mock_config, mock_gemini, mock_search):
+    mock_config.LIVE_PARTNERS = True
+    mock_config.PARALLEL_API_KEY = "present"
+    mock_config.GOOGLE_CLOUD_PROJECT = "present"
+    mock_config.GOOGLE_GENAI_USE_VERTEXAI = True
+    mock_config.RUNTIME_REVISION = "test-revision"
+    mock_search.return_value = ([], "unavailable", 0, "skipped")
+
+    response = client.post(
+        "/api/review",
+        json={"scenario_id": 1, "partner_mode": "controlled_replay_off"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["partner_mode"] == "controlled_replay_off"
+    assert data["state"] == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert data["sources"] == []
+    assert data["search_metadata"]["status"] == "skipped"
+    assert data["model_metadata"]["status"] == "skipped"
+    mock_search.assert_awaited_once_with(
+        1,
+        "administrative film permit schedule changes",
+        live_partners_enabled=False
+    )
+    mock_gemini.assert_not_awaited()
 
 @patch("app.api.execute_authority_search", new_callable=AsyncMock)
 @patch("app.api.generate_explanation", new_callable=AsyncMock)

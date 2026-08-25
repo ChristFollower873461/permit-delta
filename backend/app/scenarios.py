@@ -7,7 +7,7 @@ SCENARIOS: Dict[int, Dict[str, Any]] = {
         "description": "Internal scene-order changes and update to non-permit contact notes. No material permit scope parameters are affected.",
         "expected_state": "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED",
         "expected_destination": "Internal Production Coordinator",
-        "expected_next_action": "Log revision internally, publish updated call sheet, and archive change record.",
+        "expected_next_action": "Route the revision record to the Internal Production Coordinator for human review before the updated call sheet is distributed.",
         "uncertainty_rating": "Low",
         "baseline": {
             "permit_id": "PERMIT-2026-089A",
@@ -42,7 +42,7 @@ SCENARIOS: Dict[int, Dict[str, Any]] = {
         "description": "Adds exactly one 75kW generator to the production plan, which is a material change requiring park special events or environmental health permit revision.",
         "expected_state": "HOLD: MATERIAL DELTA; CONTACT PARK/CFC",
         "expected_destination": "State Park Special Events Office & CFC",
-        "expected_next_action": "Do NOT film with the generator yet. Submit a formal permit rider request to California State Parks Special Events and CC the California Film Commission, providing generator specs and fire-safety placement plan.",
+        "expected_next_action": "Pause the revised call-sheet handoff and route the generator delta to California State Parks Special Events and the California Film Commission for human review, with generator specifications and the proposed fire-safety placement plan.",
         "uncertainty_rating": "Low",
         "baseline": {
             "permit_id": "PERMIT-2026-089A",

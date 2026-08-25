@@ -34,6 +34,7 @@ const mockReadiness = {
 
 const mockReviewResult = {
   correlation_id: "abc-123",
+  partner_mode: "live" as const,
   state: "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED",
   explanation: "Test explanation",
   destination: "Internal Coordinator",
@@ -140,6 +141,7 @@ describe('Permit Delta App', () => {
     const fetchCalls = (global.fetch as any).mock.calls;
     const postCalls = fetchCalls.filter((call: any) => call[1]?.method === 'POST');
     expect(postCalls.length).toBe(1);
+    expect(JSON.parse(postCalls[0][1].body)).toEqual({ scenario_id: 1, partner_mode: 'live' });
 
     resolveReview(mockReviewResult);
     await waitFor(() => expect(screen.getByText(/Review Receipt/i)).toBeInTheDocument());
@@ -269,5 +271,42 @@ describe('Permit Delta App', () => {
     const fetchCalls = (global.fetch as any).mock.calls;
     const postCalls = fetchCalls.filter((call: any) => call[1]?.method === 'POST');
     expect(postCalls.length).toBe(1);
+  });
+
+  test('11. Controlled outage replay is explicit, clears prior evidence, and is sent in the next request', async () => {
+    (global.fetch as any).mockImplementation((url: string, options?: RequestInit) => {
+      if (url === '/api/review') {
+        const request = JSON.parse(String(options?.body));
+        const replayResult = {
+          ...mockReviewResult,
+          correlation_id: request.partner_mode === 'live' ? 'live-run' : 'replay-run',
+          partner_mode: request.partner_mode,
+          state: 'UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY'
+        };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(replayResult) });
+      }
+      if (url === '/api/scenarios') return Promise.resolve({ ok: true, json: () => Promise.resolve(mockScenarios) });
+      if (url === '/api/readiness') return Promise.resolve({ ok: true, json: () => Promise.resolve(mockReadiness) });
+      return Promise.reject(new Error('not found'));
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Scenario 1')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /Run Review/i }));
+    await waitFor(() => expect(screen.getByText(/Review Receipt/i)).toBeInTheDocument());
+
+    const replayButton = screen.getByRole('button', { name: 'Controlled outage replay' });
+    await user.click(replayButton);
+    expect(replayButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText(/Review Receipt/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Run Review/i }));
+    await waitFor(() => expect(screen.getByText('CONTROLLED OUTAGE REPLAY')).toBeInTheDocument());
+
+    const postCalls = (global.fetch as any).mock.calls.filter((call: any) => call[1]?.method === 'POST');
+    expect(postCalls.length).toBe(2);
+    expect(JSON.parse(postCalls[1][1].body)).toEqual({ scenario_id: 1, partner_mode: 'controlled_replay_off' });
   });
 });
