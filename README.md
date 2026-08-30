@@ -4,6 +4,13 @@ Permit Delta is a compact, high-trust operational change review and decision sup
 
 This is a decision support tool. **It does not provide legal advice or autonomous regulatory approval.** It never states or implies that a production plan is allowed, compliant, valid, approved, insured, safe, or exempt from review.
 
+## Public Release
+
+- **Live demo:** https://permit-delta-public-oexevpfpmq-uc.a.run.app
+- **Demo video:** https://youtu.be/K7eDRjejDMk
+- **Data boundary:** Every included permit, production plan, location, and contact detail is synthetic demonstration data.
+- **Execution boundary:** `Live partners` performs bounded runtime retrieval and explanation. `Controlled outage replay` disables both partner calls for one visibly labeled request and demonstrates the fail-closed path.
+
 ---
 
 ## Controlled Scenarios
@@ -130,8 +137,10 @@ npm test
 
 ## Verification Status
 
-For this release candidate:
-- **Local Tests and Build:** Observed and fully verified (28 focused backend tests and 12 focused frontend tests pass; the frontend production build compiles successfully).
-- **Bounded Local Live Canary:** Release ancestor `75e9330` completed one explicit Scenario 1 application run against Parallel Search and Vertex AI. It retained three allowed official sources, rejected returned sources outside the configured allowlist, and recorded the provider-returned `gemini-3.7-flash` model version. This proves the combined local application path on that ancestor only; final-candidate hosted replay remains required.
-- **Python 3.12 Container Target:** Observed through one successful Cloud Build and healthy private Cloud Run startup at commit `810471e`; no local Docker claim is made.
-- **Hosted Cloud Run Execution:** Private commit `810471e` deployment is observed. Hosted Scenario 2 passed Parallel plus Vertex validation after the secret-format repair; hosted Scenario 1 then exercised the model-output safety rejection and stopped the no-retry sequence. The safety-receipt correction in this source candidate remains local until a separately authorized rebuild and private tagged revision.
+For this public release:
+
+- **Local tests and build:** 28 focused backend tests and 12 focused frontend tests passed, and the frontend production build compiled successfully.
+- **Private live runtime evidence:** One accepted private revision completed three one-shot live scenarios plus one controlled replay. The live scenarios recorded Parallel and Gemini on Vertex AI metadata; the replay recorded zero retained sources, skipped both partners, and failed closed. The sequence used no retries.
+- **Presentation repair:** The release source changes only the presentation layer relative to that accepted private runtime. Its hosted desktop `1440x900` and mobile `390x844` controlled-replay comparison measured zero horizontal overflow with no partner calls.
+- **Public runtime:** The public Cloud Run service uses the validated release image without a new Cloud Build. One bounded zero-partner replay returned `UNKNOWN`, retained zero sources, skipped both partners, and made no provider call or retry.
+- **Public video:** The 155-second captioned release video is hosted as an unlisted, link-accessible YouTube video.
