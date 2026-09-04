@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  AlertTriangle, 
+import {
+  Search,
+  AlertTriangle,
   BookOpen,
   Download,
   FileText,
@@ -176,7 +176,7 @@ export default function App() {
     const changedKeys = Object.keys(selectedScenario.revised).filter(
       k => selectedScenario.baseline[k] !== selectedScenario.revised[k]
     );
-    
+
     const lines: string[] = [
       '================================================================',
       'PERMIT DELTA — OPERATIONAL CHANGE REVIEW HANDOFF BRIEF',
@@ -218,7 +218,7 @@ export default function App() {
       '----------------------------------------------------------------',
       ...(reviewResult.sources.length === 0
         ? ['  No authority source evidence retained under this execution.']
-        : reviewResult.sources.map((s, i) => 
+        : reviewResult.sources.map((s, i) =>
             `[Source ${i+1}] ${s.title}\n  Authority: ${s.authority_class}\n  URL:       ${s.url}\n  Retrieved: ${s.retrieval_time}\n  Excerpt:   "${s.excerpt}"\n`
           )),
       '================================================================',
@@ -313,9 +313,9 @@ export default function App() {
             </button>
             <div className="mode-selector-group">
               <label htmlFor="partner-mode-select" className="mode-label">Requested Partner Mode:</label>
-              <select 
+              <select
                 id="partner-mode-select"
-                value={partnerMode} 
+                value={partnerMode}
                 onChange={(e) => {
                   setPartnerMode(e.target.value as 'live' | 'controlled_replay_off');
                   setReviewResult(null);
@@ -330,16 +330,16 @@ export default function App() {
             </div>
           </div>
           <div className="action-bar-right">
-            <button 
-              onClick={handleDownloadTxtBrief} 
+            <button
+              onClick={handleDownloadTxtBrief}
               disabled={loading || !reviewResult}
               className="download-button"
               title="Download human-readable handoff brief for coordinators"
             >
               <FileText size={14} /> Coordinator Brief (.txt)
             </button>
-            <button 
-              onClick={handleDownloadBrief} 
+            <button
+              onClick={handleDownloadBrief}
               disabled={loading || !reviewResult}
               className="download-button-secondary"
               title="Download structured JSON technical export"
