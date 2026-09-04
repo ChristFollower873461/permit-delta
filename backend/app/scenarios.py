@@ -3,8 +3,8 @@ from typing import Dict, Any, List
 SCENARIOS: Dict[int, Dict[str, Any]] = {
     1: {
         "id": 1,
-        "name": "Scenario 1: Control Change",
-        "description": "Internal scene-order changes and update to non-permit contact notes. No material permit scope parameters are affected.",
+        "name": "Contact and schedule",
+        "description": "Alters scene schedule order and non-permit contact notes while leaving permitted scope unchanged. Pending review by internal production coordinator.",
         "expected_state": "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED",
         "expected_destination": "Internal Production Coordinator",
         "expected_next_action": "Route the revision record to the Internal Production Coordinator for human review before the updated call sheet is distributed.",
@@ -38,8 +38,8 @@ SCENARIOS: Dict[int, Dict[str, Any]] = {
     },
     2: {
         "id": 2,
-        "name": "Scenario 2: Material Change",
-        "description": "Adds exactly one 75kW generator to the production plan, which is a material change requiring park special events or environmental health permit revision.",
+        "name": "Added generator",
+        "description": "Adds a 75kW towable diesel generator to night filming at Leo Carrillo tide pools. Pending human review and placement coordination with State Parks and the California Film Commission.",
         "expected_state": "HOLD: MATERIAL DELTA; CONTACT PARK/CFC",
         "expected_destination": "State Park Special Events Office & CFC",
         "expected_next_action": "Pause the revised call-sheet handoff and route the generator delta to California State Parks Special Events and the California Film Commission for human review, with generator specifications and the proposed fire-safety placement plan.",
@@ -73,11 +73,11 @@ SCENARIOS: Dict[int, Dict[str, Any]] = {
     },
     3: {
         "id": 3,
-        "name": "Scenario 3: Authority Conflict (Drone Short-Notice)",
-        "description": "Adds a commercial drone five business days before filming. Current official rules from California Film Commission, California State Parks, and the FAA are contradictory or state differing lead times, causing a source conflict or uncertainty in lead-time rules.",
-        "expected_state": "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
+        "name": "Short-notice drone",
+        "description": "Adds a commercial drone tracking shot five business days before filming. Pending manual lead permit officer review for lead time and flight path review.",
+        "expected_state": "UNKNOWN: ESCALATION FOR MANUAL REVIEW",
         "expected_destination": "Lead Permit Officer (Escalated Review)",
-        "expected_next_action": "Immediately contact the Lead Permit Officer at California State Parks and the California Film Commission. The short timeline conflicts with several official agency guidelines.",
+        "expected_next_action": "Immediately contact the Lead Permit Officer at California State Parks and the California Film Commission. The short timeline requires manual authority review.",
         "uncertainty_rating": "High",
         "baseline": {
             "permit_id": "PERMIT-2026-089A",

@@ -45,13 +45,13 @@ class ReviewResult(BaseModel):
     state: Literal[
         "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED", 
         "HOLD: MATERIAL DELTA; CONTACT PARK/CFC", 
-        "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+        "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     ]
     explanation: str
     destination: str = Field(..., max_length=200)
     next_action: str = Field(..., max_length=500)
     sources: List[SourceEvidence]
-    source_freshness: Literal["Current/Fresh", "Unavailable: no retained current evidence"]
+    source_freshness: Literal["Retrieved at request time; applicability pending review", "Unavailable: no retained current evidence"]
     uncertainty_rating: Literal["Low", "Medium", "High", "UNAVAILABLE"]
     readiness: AppReadiness
     search_metadata: SearchMetadata

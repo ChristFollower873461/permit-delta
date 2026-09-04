@@ -81,7 +81,7 @@ def test_insufficient_sources_fail_closed_to_unknown(source_state_parks):
         sources=[source_state_parks],
         live_partners_enabled=True
     )
-    assert state == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert state == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert "diversity" in next_action.lower()
     assert uncertainty == "High"
 
@@ -96,7 +96,7 @@ def test_duplicate_host_sources_fail_closed_to_unknown(source_state_parks):
         sources=[source_state_parks, duplicate_source],
         live_partners_enabled=True
     )
-    assert state == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert state == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert "diversity" in next_action.lower()
 
 def test_scenario_2_retains_hold_even_with_one_source(source_state_parks):
@@ -123,7 +123,7 @@ def test_stale_source_causes_unknown_routing(source_state_parks, stale_source):
         sources=[source_state_parks, stale_source],
         live_partners_enabled=True
     )
-    assert state == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert state == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert len(verified) == 1  # Stale source is discarded during revalidation
 
 # ==========================================
@@ -158,7 +158,7 @@ def test_missing_provider_id_discarded(source_state_parks, source_cfc):
         sources=[source_state_parks, bad_source],
         live_partners_enabled=True
     )
-    assert state == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert state == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert "diversity" in next_action or "insufficient" in next_action or "lacks" in next_action
     assert len(verified) == 1
 
@@ -172,7 +172,7 @@ def test_missing_excerpt_discarded(source_state_parks, source_cfc):
         sources=[source_state_parks, bad_source],
         live_partners_enabled=True
     )
-    assert state == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert state == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert len(verified) == 1
 
 def test_future_timestamp_evidence_rejected(source_state_parks, source_cfc):
@@ -188,7 +188,7 @@ def test_future_timestamp_evidence_rejected(source_state_parks, source_cfc):
         sources=[source_state_parks, future_source],
         live_partners_enabled=True
     )
-    assert state == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert state == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert len(verified) == 1
 
 # ==========================================
@@ -640,7 +640,7 @@ def test_api_controlled_replay_skips_live_model_path(mock_config, mock_gemini, m
     assert response.status_code == 200
     data = response.json()
     assert data["partner_mode"] == "controlled_replay_off"
-    assert data["state"] == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert data["state"] == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert data["sources"] == []
     assert data["search_metadata"]["status"] == "skipped"
     assert data["model_metadata"]["status"] == "skipped"
@@ -669,7 +669,7 @@ def test_api_review_gemini_failure_fail_closed(mock_config, mock_gemini, mock_se
     response = client.post("/api/review", json={"scenario_id": 1})
     assert response.status_code == 200
     data = response.json()
-    assert data["state"] == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert data["state"] == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert data["destination"] == "Lead Permit Officer (Escalated Review)"
     assert data["model_metadata"]["status"] == "failed"
     assert data["model_metadata"]["output_used"] is False
@@ -704,7 +704,7 @@ def test_api_safety_rejection_preserves_observed_model_receipt(
     response = client.post("/api/review", json={"scenario_id": 1})
     assert response.status_code == 200
     data = response.json()
-    assert data["state"] == "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+    assert data["state"] == "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
     assert data["model_metadata"] == {
         "configured_model": "gemini-3.7-flash",
         "provider_version": "gemini-3.7-flash",

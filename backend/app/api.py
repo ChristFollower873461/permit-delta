@@ -107,7 +107,7 @@ async def run_review(payload: ReviewRequest):
         )
     except Exception:
         logger.critical(f"[{correlation_id}] Routing engine encountered an error.")
-        state = "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+        state = "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
         destination = "Lead Permit Officer (Escalated Review)"
         next_action = "Contact Lead Permit Officer immediately. Critical routing engine failure."
         uncertainty = "High"
@@ -194,7 +194,7 @@ async def run_review(payload: ReviewRequest):
     if gemini_failed:
         if state == "OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED":
             logger.warning(f"[{correlation_id}] Failing-closed OWNER REVIEW state to UNKNOWN due to unsafe/failed model response.")
-            state = "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY"
+            state = "UNKNOWN: ESCALATION FOR MANUAL REVIEW"
             destination = "Lead Permit Officer (Escalated Review)"
             next_action = "Escalate review. AI model response failed safety scanning guidelines or is unconfigured."
             uncertainty = "High"
@@ -207,7 +207,7 @@ async def run_review(payload: ReviewRequest):
     if not verified_sources:
         source_freshness = "Unavailable: no retained current evidence"
     else:
-        source_freshness = "Current/Fresh"
+        source_freshness = "Retrieved at request time; applicability pending review"
 
     logger.info(
         f"[{correlation_id}] Review Completed. State: '{state}', "

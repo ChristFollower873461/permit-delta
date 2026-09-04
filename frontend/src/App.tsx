@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
-  HelpCircle, 
-  ArrowRight, 
   AlertTriangle, 
-  BookOpen 
+  BookOpen,
+  Download,
+  FileText,
+  ChevronRight
 } from 'lucide-react';
 
 // Interfaces mapping Python FastAPI types
@@ -80,6 +81,7 @@ export default function App() {
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [readiness, setReadiness] = useState<AppReadiness | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
 
   // Load scenarios and readiness statuses on mount
   useEffect(() => {
@@ -90,7 +92,8 @@ export default function App() {
         const scenariosData = await scenariosRes.json();
         setScenarios(scenariosData);
         if (scenariosData.length > 0) {
-          setSelectedScenarioId(scenariosData[0].id);
+          const defaultScen = scenariosData.find((s: Scenario) => s.id === 2) || scenariosData[0];
+          setSelectedScenarioId(defaultScen.id);
         }
 
         const readinessRes = await fetch('/api/readiness');
@@ -124,6 +127,9 @@ export default function App() {
       if (data.readiness) {
         setReadiness(data.readiness);
       }
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
     } catch (err: any) {
       console.error(err);
       setError("Operational review execution failed. Ensure local API container is active.");
@@ -149,213 +155,241 @@ export default function App() {
     return baseVal !== revVal;
   };
 
+  const getObservedExecutionLabel = () => {
+    if (!reviewResult) {
+      if (!readiness) return 'Ready';
+      if (partnerMode === 'controlled_replay_off') return 'Controlled Outage Replay';
+      if (readiness.configured_mode.includes('Live Mode Configured')) return 'Live Partners Configured';
+      return 'Offline Safety Fallback';
+    }
+    if (reviewResult.partner_mode === 'controlled_replay_off') {
+      return 'Controlled Outage Replay';
+    }
+    if (reviewResult.search_metadata.status === 'observed' || reviewResult.model_metadata.status === 'validated') {
+      return 'Live Partners (Observed)';
+    }
+    return 'Offline Fallback (Live Requested)';
+  };
+
+  const handleDownloadTxtBrief = () => {
+    if (!reviewResult || !selectedScenario) return;
+    const changedKeys = Object.keys(selectedScenario.revised).filter(
+      k => selectedScenario.baseline[k] !== selectedScenario.revised[k]
+    );
+    
+    const lines: string[] = [
+      '================================================================',
+      'PERMIT DELTA — OPERATIONAL CHANGE REVIEW HANDOFF BRIEF',
+      '================================================================',
+      `Correlation ID:       ${reviewResult.correlation_id}`,
+      `Timestamp:            ${reviewResult.timestamp}`,
+      `Production Name:      ${selectedScenario.baseline.production_name || 'Sunset Tide'}`,
+      `Location:             ${selectedScenario.baseline.location}`,
+      `Permit Baseline ID:   ${selectedScenario.baseline.permit_id}`,
+      `Requested Mode:       ${reviewResult.partner_mode === 'live' ? 'Live partners' : 'Controlled replay'}`,
+      `Observed Execution:   ${getObservedExecutionLabel()}`,
+      `Configured Mode:      ${reviewResult.readiness.configured_mode}`,
+      `Runtime Revision:     ${reviewResult.readiness.runtime_revision}`,
+      `Search Status:        ${reviewResult.search_metadata.status.toUpperCase()} (${reviewResult.search_metadata.retained_source_count} retained)`,
+      `Model Status:         ${reviewResult.model_metadata.status.toUpperCase()}`,
+      '',
+      '----------------------------------------------------------------',
+      'DECISION SUPPORT ROUTING (NOT LEGAL ADVICE)',
+      '----------------------------------------------------------------',
+      `Routing State:        ${reviewResult.state}`,
+      `Review Destination:   ${reviewResult.destination}`,
+      `Next Human Action:    ${reviewResult.next_action}`,
+      `Applicability Note:   Retrieved evidence does not prove permit applicability. Manual review required.`,
+      '',
+      '----------------------------------------------------------------',
+      'CHANGED PRODUCTION FIELDS',
+      '----------------------------------------------------------------',
+      ...(changedKeys.length === 0
+        ? ['  No field deltas detected.']
+        : changedKeys.map(k => `  * ${k.toUpperCase()}:\n      Baseline: ${selectedScenario.baseline[k]}\n      Revised:  ${selectedScenario.revised[k]}`)),
+      '',
+      '----------------------------------------------------------------',
+      'SYNTHESIZED EXPLANATION',
+      '----------------------------------------------------------------',
+      reviewResult.explanation,
+      '',
+      '----------------------------------------------------------------',
+      'RETAINED SOURCE EVIDENCE',
+      '----------------------------------------------------------------',
+      ...(reviewResult.sources.length === 0
+        ? ['  No authority source evidence retained under this execution.']
+        : reviewResult.sources.map((s, i) => 
+            `[Source ${i+1}] ${s.title}\n  Authority: ${s.authority_class}\n  URL:       ${s.url}\n  Retrieved: ${s.retrieval_time}\n  Excerpt:   "${s.excerpt}"\n`
+          )),
+      '================================================================',
+      'SYNTHETIC COMPLIANCE RECORD — DECISION SUPPORT INSTRUMENT ONLY',
+      '================================================================'
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `permit-delta-brief-${reviewResult.correlation_id}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadBrief = () => {
+    if (!reviewResult || !selectedScenario) return;
+    const changedKeys = Object.keys(selectedScenario.revised).filter(
+      k => selectedScenario.baseline[k] !== selectedScenario.revised[k]
+    );
+    const brief = {
+      correlation_id: reviewResult.correlation_id,
+      timestamp: reviewResult.timestamp,
+      production_name: selectedScenario.baseline.production_name || 'Sunset Tide',
+      location: selectedScenario.baseline.location,
+      requested_mode: reviewResult.partner_mode,
+      observed_execution: getObservedExecutionLabel(),
+      readiness: reviewResult.readiness,
+      search_metadata: reviewResult.search_metadata,
+      model_metadata: reviewResult.model_metadata,
+      state: reviewResult.state,
+      destination: reviewResult.destination,
+      next_action: reviewResult.next_action,
+      applicability_note: "Retrieved authority sources do not prove permit applicability. Qualified coordinator manual review required.",
+      changed_fields: changedKeys.map(k => ({
+        field: k,
+        baseline: selectedScenario.baseline[k],
+        revised: selectedScenario.revised[k]
+      })),
+      explanation: reviewResult.explanation,
+      baseline: selectedScenario.baseline,
+      revised: selectedScenario.revised,
+      sources: reviewResult.sources
+    };
+    const blob = new Blob([JSON.stringify(brief, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `permit-delta-technical-${reviewResult.correlation_id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="app-container">
-      {/* Header Instrument */}
       <header className="header-instrument">
         <div className="header-title-container">
           <h1>Permit Delta</h1>
-          <p>Operational Change Review Instrument // Leo Carrillo State Park</p>
+          <div className="header-sub-row">
+            <span className="production-tag">Production: <strong>Sunset Tide</strong></span>
+            <span className="separator-bullet">•</span>
+            <span className="location-tag">Location: <strong>Leo Carrillo State Park (Sector 1)</strong></span>
+          </div>
         </div>
-        
-        {/* Connection status pills - Configuration-only facts truthfully described without connection dots */}
-        <div className="header-status-container">
-          <div className="meta-status-pill">
-            Parallel key: {readiness?.parallel_configured ? 'Present' : 'Not set'}
-          </div>
-          <div className="meta-status-pill">
-            Vertex project: {readiness?.vertex_ai_configured ? 'Set' : 'Not set'}
-          </div>
-          <div className="meta-status-pill" style={{ fontStyle: 'italic', fontWeight: 'bold' }}>
-            Config Mode: {readiness?.configured_mode || 'Loading...'}
-          </div>
+        <div className="execution-status-badge">
+          <span className="status-label">Observed Mode:</span>
+          <span className="status-value">{getObservedExecutionLabel()}</span>
         </div>
       </header>
 
       <div className="synthetic-warning">
-        <strong>SYNTHETIC DEMONSTRATION DATA:</strong> This package contains no real permit or customer file.
+        <strong>SYNTHETIC COMPLIANCE SCOPE:</strong> This demonstration workspace contains fixed synthetic test scenarios. It does not provide legal advice, policy approvals, or regulatory permits.
       </div>
 
       {error && (
-        <div style={{ padding: '12px', border: '1px solid #ef4444', backgroundColor: '#fef2f2', color: '#b91c1c', borderRadius: '2px', marginBottom: '24px', fontFamily: 'monospace', fontSize: '12px' }}>
+        <div className="error-alert">
           <strong>CONNECTION ERROR:</strong> {error}
         </div>
       )}
 
-      {/* Grid Layout */}
-      <div className="workspace-grid">
-        
-        {/* Sidebar - Scenario Selection & Receipt */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Section 1: Scenario Configuration */}
-          <div className="section-box">
-            <h2 className="section-box-title">Revisions To Process</h2>
-            <div className="scenario-list" role="listbox" aria-label="Scenarios">
-              {scenarios.map((sc) => (
-                <button
-                  key={sc.id}
-                  role="option"
-                  aria-selected={selectedScenarioId === sc.id}
-                  onClick={() => {
-                    if (selectedScenarioId !== sc.id) {
-                      setSelectedScenarioId(sc.id);
-                      setReviewResult(null);
-                      setError(null);
-                    }
-                  }}
-                  className={`scenario-button ${selectedScenarioId === sc.id ? 'selected' : ''}`}
-                  disabled={loading}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <h4>{sc.name}</h4>
-                    <ArrowRight size={14} style={{ opacity: selectedScenarioId === sc.id ? 1 : 0.2 }} />
-                  </div>
-                  <p>{sc.description}</p>
-                </button>
-              ))}
-            </div>
-            <div className="partner-mode-field">
-              <span className="partner-mode-label">Partner execution</span>
-              <div className="partner-mode-segment" role="group" aria-label="Partner execution mode">
-                <button
-                  type="button"
-                  className={`partner-mode-button ${partnerMode === 'live' ? 'selected' : ''}`}
-                  aria-pressed={partnerMode === 'live'}
-                  disabled={loading}
-                  onClick={() => {
-                    if (partnerMode !== 'live') {
-                      setPartnerMode('live');
-                      setReviewResult(null);
-                      setError(null);
-                    }
-                  }}
-                >
-                  Live partners
-                </button>
-                <button
-                  type="button"
-                  className={`partner-mode-button ${partnerMode === 'controlled_replay_off' ? 'selected' : ''}`}
-                  aria-pressed={partnerMode === 'controlled_replay_off'}
-                  disabled={loading}
-                  onClick={() => {
-                    if (partnerMode !== 'controlled_replay_off') {
-                      setPartnerMode('controlled_replay_off');
-                      setReviewResult(null);
-                      setError(null);
-                    }
-                  }}
-                >
-                  Controlled outage replay
-                </button>
-              </div>
-            </div>
+      <main className="main-workspace">
+        {/* 1. Primary Action & Execution Controls Bar (In Top Viewport) */}
+        <div className="primary-action-bar">
+          <div className="action-bar-left">
             <button
               onClick={() => triggerReview(selectedScenarioId!)}
               disabled={loading || selectedScenarioId === null}
               className="run-review-button"
-              aria-label="Run Review"
             >
-              {loading ? 'Running...' : 'Run Review'}
+              {loading ? 'Running Operational Review...' : 'Run Operational Review'}
+            </button>
+            <div className="mode-selector-group">
+              <label htmlFor="partner-mode-select" className="mode-label">Requested Partner Mode:</label>
+              <select 
+                id="partner-mode-select"
+                value={partnerMode} 
+                onChange={(e) => {
+                  setPartnerMode(e.target.value as 'live' | 'controlled_replay_off');
+                  setReviewResult(null);
+                  setError(null);
+                }}
+                disabled={loading}
+                className="mode-select"
+              >
+                <option value="live">Live Partners (Search & Gemini)</option>
+                <option value="controlled_replay_off">Controlled Outage Replay (Offline)</option>
+              </select>
+            </div>
+          </div>
+          <div className="action-bar-right">
+            <button 
+              onClick={handleDownloadTxtBrief} 
+              disabled={loading || !reviewResult}
+              className="download-button"
+              title="Download human-readable handoff brief for coordinators"
+            >
+              <FileText size={14} /> Coordinator Brief (.txt)
+            </button>
+            <button 
+              onClick={handleDownloadBrief} 
+              disabled={loading || !reviewResult}
+              className="download-button-secondary"
+              title="Download structured JSON technical export"
+            >
+              <Download size={14} /> Technical JSON
             </button>
           </div>
+        </div>
 
-          {/* Section 2: Non-Authorizing Acknowledgment Receipt */}
-          {reviewResult && (
-            <div className="receipt-box">
-              <div className="receipt-title">Review Receipt</div>
-              <div className="receipt-row">
-                <span>Correlation ID:</span>
-                <span style={{ fontWeight: 'bold' }}>{reviewResult.correlation_id}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Timestamp:</span>
-                <span>{reviewResult.timestamp}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Reviewer State:</span>
-                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
-                  {reviewResult.state}
-                </span>
-              </div>
-              <div className="receipt-row">
-                <span>Destination:</span>
-                <span>{reviewResult.destination}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Partner Mode:</span>
-                <span>{reviewResult.partner_mode === 'live' ? 'LIVE PARTNERS' : 'CONTROLLED OUTAGE REPLAY'}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Search Status:</span>
-                <span>
-                  {reviewResult.search_metadata.status === 'observed'
-                    ? `OBSERVED (${reviewResult.search_metadata.latency_ms}ms)`
-                    : reviewResult.search_metadata.status === 'failed'
-                      ? 'FAILED (EXECUTION DID NOT COMPLETE)'
-                      : `${reviewResult.search_metadata.status.toUpperCase()} (NOT RUN)`}
-                </span>
-              </div>
-              <div className="receipt-row">
-                <span>Search ID:</span>
-                <span>{reviewResult.search_metadata.status === 'observed' ? reviewResult.search_metadata.provider_response_id : 'NOT OBSERVED'}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Sources Retained:</span>
-                <span>{reviewResult.search_metadata.retained_source_count}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Model Status:</span>
-                <span>
-                  {reviewResult.model_metadata.status === 'validated'
-                    ? `VALIDATED (${reviewResult.model_metadata.latency_ms}ms)`
-                    : reviewResult.model_metadata.status === 'safety_rejected'
-                      ? `REJECTED BY SAFETY GATE (${reviewResult.model_metadata.latency_ms}ms)`
-                    : reviewResult.model_metadata.status === 'failed'
-                      ? 'FAILED (EXECUTION DID NOT COMPLETE)'
-                      : `${reviewResult.model_metadata.status.toUpperCase()} (NOT RUN)`}
-                </span>
-              </div>
-              <div className="receipt-row">
-                <span>Configured Model:</span>
-                <span>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Provider Version:</span>
-                <span>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Observed Vertex:</span>
-                <span>{reviewResult.model_metadata.is_vertex_ai ? "TRUE" : "NOT OBSERVED"}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Model Output Used:</span>
-                <span>{reviewResult.model_metadata.output_used ? 'YES' : 'NO'}</span>
-              </div>
-              <div className="receipt-row">
-                <span>Runtime Revision:</span>
-                <span>{reviewResult.readiness.runtime_revision}</span>
-              </div>
-              
-              <div className="receipt-footer">
-                <p style={{ fontSize: '11px', color: '#666', textAlign: 'center', marginTop: '4px', fontStyle: 'italic' }}>
-                  This acts as a receipt of routing determination. This is session display only and is not stored.
-                </p>
-              </div>
+        {/* 2. Scenario Selection (Neutral full names) */}
+        <div className="scenario-nav-band">
+          <span className="scenario-nav-title">Change Case:</span>
+          <div className="scenario-tabs" role="tablist">
+            {scenarios.map((sc) => (
+              <button
+                key={sc.id}
+                role="tab"
+                aria-selected={selectedScenarioId === sc.id}
+                onClick={() => {
+                  if (selectedScenarioId !== sc.id) {
+                    setSelectedScenarioId(sc.id);
+                    setReviewResult(null);
+                    setError(null);
+                  }
+                }}
+                className={`scenario-tab ${selectedScenarioId === sc.id ? 'selected' : ''}`}
+                disabled={loading}
+              >
+                {sc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Baseline vs Revision Parameter Comparison */}
+        {selectedScenario && (
+          <div className="content-band comparison-band">
+            <div className="comparison-header-wrap">
+              <h2 className="band-title">
+                {selectedScenario.name}
+              </h2>
+              <p className="band-subtitle">{selectedScenario.description}</p>
             </div>
-          )}
-        </aside>
-
-        <main className="dashboard-workspace" aria-live="polite" aria-busy={loading}>
-          {selectedScenario && (
-            <div className="section-box">
-              <h3 className="section-box-title">Baseline vs Proposed Plan Revision</h3>
+            <div className="table-scroll-container">
               <table className="parameter-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '20%' }}>Parameter</th>
-                    <th style={{ width: '40%' }}>Issued Permit Baseline</th>
-                    <th style={{ width: '40%' }}>Revised Production Plan</th>
+                    <th style={{ width: '22%' }}>Parameter</th>
+                    <th style={{ width: '39%' }}>Issued Permit Baseline</th>
+                    <th style={{ width: '39%' }}>Revised Production Plan</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -411,146 +445,201 @@ export default function App() {
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
+        )}
 
-          {loading ? (
-            <div className="section-box" style={{ flexGrow: 1, justifyContent: 'center' }}>
-              <div className="loading-overlay">
-                <div className="spinner" />
-                <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#666' }}>
-                  Evaluating selected revision...
-                </p>
+        {/* 4. Results Area */}
+        {loading ? (
+          <div className="loading-overlay">
+            <div className="spinner" />
+            <p style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: '14px', color: '#4b5563' }}>Evaluating selected plan revision...</p>
+          </div>
+        ) : reviewResult && selectedScenario ? (
+          <div className="results-container" ref={resultsRef}>
+            {/* State Banner */}
+            <div className={getStateBannerClass(reviewResult.state)}>
+              <div className="state-label-container">
+                <span className="state-title">{reviewResult.state}</span>
+                <span className="state-badge">Deterministic Local Routing</span>
               </div>
             </div>
-          ) : reviewResult && selectedScenario ? (
-            <>
-              {/* Top-Level Decision Routing State Banner */}
-              <div className={getStateBannerClass(reviewResult.state)}>
-                <div className="state-label-container">
-                  <span className="state-title">{reviewResult.state}</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '10px', textTransform: 'uppercase', border: '1px solid currentColor', padding: '2px 6px', borderRadius: '1px' }}>
-                    System Decision Routing
-                  </span>
-                </div>
-                <p className="state-subtitle">
-                  Operational reviews evaluate scope changes deterministically to protect production integrity.
-                </p>
-              </div>
 
-              {/* Step 3: Human Action and Metadata Instruments */}
-              <div className="destinations-actions-grid">
-                <div className="destination-box">
-                  <h5>Human Review Destination</h5>
-                  <p>{reviewResult.destination}</p>
-                </div>
-                <div className="action-box">
-                  <h5>Next Human Action</h5>
-                  <p>{reviewResult.next_action}</p>
-                </div>
+            {/* Destination & Action */}
+            <div className="destinations-actions-grid">
+              <div className="destination-box">
+                <div className="dest-action-label">Human Review Destination</div>
+                <div className="dest-action-value">{reviewResult.destination}</div>
               </div>
+              <div className="action-box">
+                <div className="dest-action-label">Next Human Action</div>
+                <div className="dest-action-value">{reviewResult.next_action}</div>
+              </div>
+            </div>
 
-              <div className="evidence-summary-grid">
-                <div className="meta-status-pill" style={{ justifyContent: 'space-between', padding: '8px 12px' }}>
-                  <span style={{ color: '#666' }}>Source Evidence Freshness:</span>
-                  <span style={{ fontWeight: 'bold', color: reviewResult.source_freshness.includes('no retained') ? '#b91c1c' : '#15803d' }}>
+            {/* Persistent Human Applicability Boundary Note */}
+            <div className="applicability-persistent-note">
+              <AlertTriangle size={16} className="note-icon" />
+              <div className="note-body">
+                <strong>HUMAN APPLICABILITY BOUNDARY:</strong> Retrieved reference evidence does not prove permit applicability or confer regulatory clearance. The internal coordinator or designated park officer must independently verify physical and jurisdictional requirements before call-sheet release.
+              </div>
+            </div>
+
+            {/* Explanation Band */}
+            <div className="content-band narrative-band">
+              <h3 className="band-title"><BookOpen size={16} /> Reasoning & Operational Synthesis</h3>
+              <div className="explanation-text">
+                {reviewResult.explanation.split('\n\n').map((paragraph, index) => {
+                  if (paragraph.startsWith('**DECISION SUPPORT NOTICE**')) {
+                    return (
+                      <div key={index} className="decision-support-callout">
+                        <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>{paragraph.replace('**DECISION SUPPORT NOTICE**:', '')}</div>
+                      </div>
+                    );
+                  }
+                  return <p key={index}>{paragraph}</p>;
+                })}
+              </div>
+            </div>
+
+            {/* Reference Sources Band */}
+            <div className="content-band sources-band">
+              <div className="sources-header-row">
+                <h3 className="band-title"><Search size={16} /> Authoritative Reference Sources</h3>
+                <div className="retrieval-status-pill">
+                  <span className="pill-label">Retrieval status:</span>
+                  <span className={`pill-value ${reviewResult.source_freshness.includes('pending') ? 'status-amber' : 'status-muted'}`}>
                     {reviewResult.source_freshness}
                   </span>
                 </div>
-                <div className="meta-status-pill" style={{ justifyContent: 'space-between', padding: '8px 12px' }}>
-                  <span style={{ color: '#666' }}>Evidence Uncertainty Rating:</span>
-                  <span style={{ fontWeight: 'bold', color: reviewResult.uncertainty_rating === 'High' ? '#b91c1c' : reviewResult.uncertainty_rating === 'Low' ? '#15803d' : '#b45309' }}>
-                    {reviewResult.uncertainty_rating}
+              </div>
+
+              {reviewResult.sources.length === 0 ? (
+                <p className="no-sources-text">
+                  No authority evidence was retained under this execution mode.
+                </p>
+              ) : (
+                <div className="sources-list">
+                  {reviewResult.sources.map((source, idx) => (
+                    <div key={idx} className="source-item">
+                      <div className="source-meta">
+                        <span className="source-authority">{source.authority_class}</span>
+                        <span className="source-time">Retrieved: {new Date(source.retrieval_time).toLocaleString()}</span>
+                      </div>
+                      <div className="source-heading">
+                        {source.title} — <a href={source.url} target="_blank" rel="noopener noreferrer" className="source-url">{source.url}</a>
+                      </div>
+                      <div className="source-excerpt">
+                        "{source.excerpt}"
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* 5. Technical Disclosure */}
+        <details className="technical-disclosure">
+          <summary><ChevronRight size={14} /> Technical Disclosure & Configuration</summary>
+          <div className="disclosure-content">
+            <div className="header-status-container" style={{ marginBottom: '16px' }}>
+              <div className="meta-status-pill">
+                Parallel key: {readiness?.parallel_configured ? 'Present' : 'Not set'}
+              </div>
+              <div className="meta-status-pill">
+                Vertex project: {readiness?.vertex_ai_configured ? 'Set' : 'Not set'}
+              </div>
+              <div className="meta-status-pill" style={{ fontStyle: 'italic', fontWeight: 'bold' }}>
+                Config Mode: {readiness?.configured_mode || 'Loading...'}
+              </div>
+            </div>
+            {reviewResult && (
+              <div className="receipt-box">
+                <div className="receipt-title">Review Receipt</div>
+                <div className="receipt-row">
+                  <span>Correlation ID:</span>
+                  <span style={{ fontWeight: 'bold' }}>{reviewResult.correlation_id}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Timestamp:</span>
+                  <span>{reviewResult.timestamp}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Reviewer State:</span>
+                  <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
+                    {reviewResult.state}
                   </span>
                 </div>
-              </div>
-
-              {/* Step 4: Reasoning & Explanation Basis */}
-              <div className="section-box">
-                <h3 className="section-box-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <BookOpen size={14} /> {reviewResult.model_metadata.status === 'validated' ? 'REASONING & EXPLANATION (GEMINI MODEL OUTPUT)' : reviewResult.model_metadata.status === 'safety_rejected' ? 'REASONING & EXPLANATION (MODEL OUTPUT REJECTED; LOCAL SAFETY FALLBACK)' : 'REASONING & EXPLANATION (LOCAL SAFETY FALLBACK)'}
-                </h3>
-                <div className="explanation-text">
-                  {reviewResult.explanation.split('\n\n').map((paragraph, index) => {
-                    if (paragraph.startsWith('**DECISION SUPPORT NOTICE**')) {
-                      return (
-                        <div key={index} style={{ border: '1px solid #d97706', padding: '12px', backgroundColor: '#fffbeb', color: '#b45309', margin: '12px 0', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                          <div>{paragraph.replace('**DECISION SUPPORT NOTICE**:', '')}</div>
-                        </div>
-                      );
-                    }
-                    return <p key={index}>{paragraph}</p>;
-                  })}
+                <div className="receipt-row">
+                  <span>Destination:</span>
+                  <span>{reviewResult.destination}</span>
                 </div>
-
-                {/* Truthful observed Model Run performance metadata */}
-                <div className="metadata-grid">
-                  <div>
-                    <span className="meta-label">Configured Model:</span> <strong>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</strong>
-                  </div>
-                  <div>
-                    <span className="meta-label">Model Run Latency:</span> <strong>{modelRunWasObserved(reviewResult.model_metadata) ? `${reviewResult.model_metadata.latency_ms}ms` : reviewResult.model_metadata.status === 'failed' ? 'NOT OBSERVED' : 'NOT RUN'}</strong>
-                  </div>
-                  <div>
-                    <span className="meta-label">Provider Engine Version:</span> <strong>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</strong>
-                  </div>
-                  <div>
-                    <span className="meta-label">Model Run Status:</span> <strong style={{ color: reviewResult.model_metadata.status === 'validated' ? '#15803d' : reviewResult.model_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.model_metadata.status.toUpperCase().replace('_', ' ')}</strong>
-                  </div>
+                <div className="receipt-row">
+                  <span>Requested Mode:</span>
+                  <span>{reviewResult.partner_mode === 'live' ? 'LIVE PARTNERS' : 'CONTROLLED OUTAGE REPLAY'}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Observed Execution:</span>
+                  <span style={{ fontWeight: 'bold' }}>{getObservedExecutionLabel().toUpperCase()}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Search Status:</span>
+                  <span>
+                    {reviewResult.search_metadata.status === 'observed'
+                      ? `OBSERVED (${reviewResult.search_metadata.latency_ms}ms)`
+                      : reviewResult.search_metadata.status === 'failed'
+                        ? 'FAILED (EXECUTION DID NOT COMPLETE)'
+                        : `${reviewResult.search_metadata.status.toUpperCase()} (NOT RUN)`}
+                  </span>
+                </div>
+                <div className="receipt-row">
+                  <span>Search ID:</span>
+                  <span>{reviewResult.search_metadata.status === 'observed' ? reviewResult.search_metadata.provider_response_id : 'NOT OBSERVED'}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Sources Retained:</span>
+                  <span>{reviewResult.search_metadata.retained_source_count}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Model Status:</span>
+                  <span>
+                    {reviewResult.model_metadata.status === 'validated'
+                      ? `VALIDATED (${reviewResult.model_metadata.latency_ms}ms)`
+                      : reviewResult.model_metadata.status === 'safety_rejected'
+                        ? `REJECTED BY SAFETY GATE (${reviewResult.model_metadata.latency_ms}ms)`
+                      : reviewResult.model_metadata.status === 'failed'
+                        ? 'FAILED (EXECUTION DID NOT COMPLETE)'
+                        : `${reviewResult.model_metadata.status.toUpperCase()} (NOT RUN)`}
+                  </span>
+                </div>
+                <div className="receipt-row">
+                  <span>Configured Model:</span>
+                  <span>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.configured_model : `${reviewResult.model_metadata.configured_model} (Requested)`}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Provider Version:</span>
+                  <span>{modelRunWasObserved(reviewResult.model_metadata) ? reviewResult.model_metadata.provider_version : 'NOT OBSERVED'}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Observed Vertex:</span>
+                  <span>{reviewResult.model_metadata.is_vertex_ai ? "TRUE" : "NOT OBSERVED"}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Model Output Used:</span>
+                  <span>{reviewResult.model_metadata.output_used ? 'YES' : 'NO'}</span>
+                </div>
+                <div className="receipt-row">
+                  <span>Runtime Revision:</span>
+                  <span>{reviewResult.readiness.runtime_revision}</span>
                 </div>
               </div>
+            )}
+          </div>
+        </details>
+      </main>
 
-              {/* Step 5: Retrieved Authoritative Sources */}
-              <div className="section-box">
-                <h3 className="section-box-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Search size={14} /> Authoritative Reference Sources (Parallel Web Search SDK)
-                </h3>
-                {/* Search metadata status details */}
-                <div className="metadata-grid" style={{ borderBottom: '1px dashed #e5e7eb', paddingBottom: '8px', marginBottom: '8px' }}>
-                  <div><span className="meta-label">Search Status:</span> <strong style={{ color: reviewResult.search_metadata.status === 'observed' ? '#15803d' : reviewResult.search_metadata.status === 'failed' ? '#b91c1c' : '#d97706' }}>{reviewResult.search_metadata.status.toUpperCase()}</strong></div>
-                  <div><span className="meta-label">Search Latency:</span> <strong>{reviewResult.search_metadata.status === 'observed' || reviewResult.search_metadata.status === 'failed' ? `${reviewResult.search_metadata.latency_ms}ms` : 'NOT RUN'}</strong></div>
-                  <div><span className="meta-label">Sources Retained:</span> <strong>{reviewResult.search_metadata.retained_source_count}</strong></div>
-                  <div><span className="meta-label">Provider ID:</span> <strong>{reviewResult.search_metadata.status === 'observed' ? reviewResult.search_metadata.provider_response_id : 'NOT OBSERVED'}</strong></div>
-                </div>
-                {reviewResult.sources.length === 0 ? (
-                  <p style={{ fontStyle: 'italic', color: '#666', fontSize: '11px' }}>
-                    No current official evidence was retained under this configuration. Please check the search status above.
-                  </p>
-                ) : (
-                  <div className="sources-list">
-                    {reviewResult.sources.map((source, idx) => (
-                      <div key={idx} className="source-item">
-                        <div className="source-meta">
-                          <span className="source-authority">{source.authority_class}</span>
-                          <span>Retrieved: {new Date(source.retrieval_time).toLocaleString()}</span>
-                          <span>Latency: {source.latency_ms}ms</span>
-                        </div>
-                        <div style={{ fontWeight: '600', fontSize: '12px', marginBottom: '4px', color: '#111827' }}>
-                          {source.title} — <a href={source.url} target="_blank" rel="noopener noreferrer" className="source-url">{source.url}</a>
-                        </div>
-                        <div className="source-excerpt">
-                          "{source.excerpt}"
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="section-box" style={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <HelpCircle size={48} style={{ opacity: 0.15 }} />
-              <p style={{ color: '#666', fontSize: '12px', marginTop: '12px' }}>
-                {selectedScenario
-                  ? 'Review the selected revision, then run one explicit operational review.'
-                  : 'Select a scenario to analyze and display the Operational Permit Review report.'}
-              </p>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Footer Credits Info */}
       <footer className="footer-credits">
         Permit Delta Decision Support System © 2026 // Integrations: Google Gemini on Vertex AI + Parallel Web Search.
       </footer>

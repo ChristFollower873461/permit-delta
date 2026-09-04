@@ -74,7 +74,7 @@ def determine_routing_state(
     if not scenario:
         logger.warning(f"Undefined scenario {scenario_id}. Failing closed.")
         return (
-            "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
+            "UNKNOWN: ESCALATION FOR MANUAL REVIEW",
             "Lead Permit Officer (Escalated Review)",
             "Contact your lead permit officer immediately as the requested scenario is undefined in system memory.",
             "High",
@@ -141,7 +141,7 @@ def determine_routing_state(
     # 3a. Partner-off mode check
     if not live_partners_enabled:
         return (
-            "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
+            "UNKNOWN: ESCALATION FOR MANUAL REVIEW",
             "Lead Permit Officer (Escalated Review)",
             "Run live partner search to establish real-time authority guidelines. Static fallbacks are unverified.",
             "UNAVAILABLE",
@@ -151,7 +151,7 @@ def determine_routing_state(
     # 3b. Empty verified sources check
     if not verified_sources:
         return (
-            "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
+            "UNKNOWN: ESCALATION FOR MANUAL REVIEW",
             "Lead Permit Officer (Escalated Review)",
             "Authority search returned empty or unverified sources. Local fallback options are unverified.",
             "UNAVAILABLE",
@@ -174,7 +174,7 @@ def determine_routing_state(
             f"Found {len(distinct_classes)} distinct classes and {len(distinct_hosts)} distinct hosts."
         )
         return (
-            "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
+            "UNKNOWN: ESCALATION FOR MANUAL REVIEW",
             "Lead Permit Officer (Escalated Review)",
             "Authority evidence lacks sufficient diversity. At least two distinct authoritative classes and hosts are required.",
             "High",
@@ -188,7 +188,7 @@ def determine_routing_state(
     if drone_added:
         logger.info("Deterministic route trigger: Short-notice drone added. Status set to UNKNOWN.")
         return (
-            "UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY",
+            "UNKNOWN: ESCALATION FOR MANUAL REVIEW",
             scenario["expected_destination"],
             scenario["expected_next_action"],
             scenario["uncertainty_rating"],

@@ -1,6 +1,6 @@
 # Permit Delta
 
-Permit Delta is a compact, high-trust operational change review and decision support instrument for film production location managers and coordinators. The application compares issued location permit parameters with real-time plan modifications, retrieves official authority guidelines using Parallel at runtime, enforces deterministic local routing safety rules, and uses Gemini 3.7 Flash via Google's ADK (Agent Development Kit) 2.7.1 session runners to explain the resulting operational state and next review destination.
+Permit Delta is a compact, high-trust operational change review and decision support instrument for film production location managers and coordinators. The application evaluates three fixed synthetic location change scenarios against issued permit parameters, queries official authority guidelines using Parallel when live mode is configured, enforces deterministic local routing safety rules, and uses Gemini 3.7 Flash via Google's ADK (Agent Development Kit) 2.7.1 session runners to explain the resulting operational state and recommended next review destination.
 
 This is a decision support tool. **It does not provide legal advice or autonomous regulatory approval.** It never states or implies that a production plan is allowed, compliant, valid, approved, insured, safe, or exempt from review.
 
@@ -8,11 +8,11 @@ This is a decision support tool. **It does not provide legal advice or autonomou
 
 ## Controlled Scenarios
 
-The workspace includes three synthetic demo scenarios representing common production change patterns:
+The workspace evaluates three fixed synthetic demo scenarios representing common production change patterns (it is not an arbitrary real-time plan ingestion product):
 
 1. **Scenario 1: Control Change**
    - *Delta:* Alters scene schedule order and updates an internal, non-permit contact number.
-   - *Deterministic Route:* `OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED` (Requires at least two valid, fresh, diverse sources and a safety-validated model explanation to pass to OWNER REVIEW).
+   - *Deterministic Route:* `OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED` (Requires at least two distinct verified official sources meeting host diversity invariants and a safety-validated model explanation).
    - *Destination:* Internal Production Coordinator.
 
 2. **Scenario 2: Material Change**
@@ -20,9 +20,9 @@ The workspace includes three synthetic demo scenarios representing common produc
    - *Deterministic Route:* `HOLD: MATERIAL DELTA; CONTACT PARK/CFC` (Model fallbacks and scenario data are synthetic).
    - *Destination:* State Park Special Events Office & CFC.
 
-3. **Scenario 3: Authority Conflict (Short Notice)**
+3. **Scenario 3: Short-Notice Drone Addition**
    - *Delta:* Adds a commercial drone (UAS) tracking shot exactly 5 business days before filming.
-   - *Deterministic Route:* `UNKNOWN: SOURCE CONFLICT OR STALE AUTHORITY` (Model fallbacks and scenario data are synthetic).
+   - *Deterministic Route:* `UNKNOWN: ESCALATION FOR MANUAL REVIEW` (Predetermined manual escalation; routing logic enforces escalation to manual authority review regardless of evidence retrieval diversity).
    - *Destination:* Lead Permit Officer.
 
 ---
@@ -130,8 +130,14 @@ npm test
 
 ## Verification Status
 
-For this release candidate:
-- **Local Tests and Build:** Observed and fully verified (28 focused backend tests and 12 focused frontend tests pass; the frontend production build compiles successfully).
-- **Bounded Local Live Canary:** Release ancestor `75e9330` completed one explicit Scenario 1 application run against Parallel Search and Vertex AI. It retained three allowed official sources, rejected returned sources outside the configured allowlist, and recorded the provider-returned `gemini-3.7-flash` model version. This proves the combined local application path on that ancestor only; final-candidate hosted replay remains required.
+### Current Candidate Verification (September 4 Pass)
+- **Local Tests and Build:** 2 focused product-finish backend tests passed and the frontend production build compiled cleanly (`npm run build`).
+- **Layout & State Clearing Inspection:** Desktop and 390px mobile viewports were inspected for generator HOLD routing, controlled-outage replay UNKNOWN routing, truthful actual execution mode indicators, and immediate clearing of stale results upon scenario or partner mode switches.
+- **Export Payload Verification:** The coordinator handoff plaintext export function text payload was verified using a local response; browser-file delivery was not directly observed.
+- **Provider & Deployment Boundary:** No current-candidate live provider requests, Cloud Build runs, deployments, or publications occurred in this finish pass. Existing public releases remain unchanged.
+
+### Historical Ancestor Evidence (Reference Only)
+- **Inherited Test Suites:** Ancestor test suite recorded 28 focused backend tests and 12 focused frontend tests passing.
+- **Bounded Local Live Canary (Ancestor `75e9330`):** Completed one explicit Scenario 1 application run against Parallel Search and Vertex AI (`gemini-3.7-flash`), verifying domain allowlist filtering. This historical proof applies to ancestor `75e9330` only.
 - **Python 3.12 Container Target:** Observed through one successful Cloud Build and healthy private Cloud Run startup at commit `810471e`; no local Docker claim is made.
-- **Hosted Cloud Run Execution:** Private commit `810471e` deployment is observed. Hosted Scenario 2 passed Parallel plus Vertex validation after the secret-format repair; hosted Scenario 1 then exercised the model-output safety rejection and stopped the no-retry sequence. The safety-receipt correction in this source candidate remains local until a separately authorized rebuild and private tagged revision.
+- **Hosted Cloud Run Execution (Ancestor `810471e`):** Private deployment verified container startup and Scenario 2 / Scenario 1 execution against live endpoints. Current candidate changes remain local until a future authorized deployment.

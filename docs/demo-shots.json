@@ -1,0 +1,56 @@
+[
+  {
+    "id": "shot-01-initial-viewport-generator",
+    "start_seconds": 0,
+    "end_seconds": 18,
+    "title": "Initial Viewport & Added Generator Delta",
+    "narration": "In film production, plan changes happen fast. On this synthetic Sunset Tide shoot at Leo Carrillo State Park, the revised plan adds a 75kW generator to the tide pool sector. We run the operational review right from the top viewport.",
+    "capture_requirement": "Close crop of header showing Sunset Tide, Leo Carrillo State Park, and the comparison table highlighting the added 75kW Towable Generator.",
+    "framing": "Header bar down through comparison table rows at 1280x720 crop"
+  },
+  {
+    "id": "shot-02-material-hold-routing",
+    "start_seconds": 18,
+    "end_seconds": 38,
+    "title": "Deterministic HOLD Routing & Human Destination",
+    "narration": "The system flags the generator delta and routes the handoff to the State Park Special Events Office and the California Film Commission. The application recommends that the coordinator pause call-sheet release to submit fire-safety placement plans. The model cannot downgrade this safety route.",
+    "capture_requirement": "Close crop of red HOLD state banner and dual destination boxes (State Park Special Events Office and Next Human Action).",
+    "framing": "Focused on state banner and destination boxes in results container"
+  },
+  {
+    "id": "shot-03-control-owner-review",
+    "start_seconds": 38,
+    "end_seconds": 56,
+    "title": "Control Case & Owner Review Routing",
+    "narration": "Next, we switch to a non-material contact and schedule reorder scenario. When live partners are available, Parallel retrieves reference guidelines from both state park and film commission domains, and Gemini synthesizes an operational explanation routed to the internal coordinator.",
+    "capture_requirement": "Selection of 'Contact and schedule' tab and resulting green OWNER REVIEW state banner with Internal Production Coordinator destination.",
+    "framing": "Scenario tabs and green owner review state card"
+  },
+  {
+    "id": "shot-04-retrieval-applicability-boundary",
+    "start_seconds": 56,
+    "end_seconds": 74,
+    "title": "Retrieval Status & Applicability Disclaimer",
+    "narration": "Notice the honest boundary: retrieval timestamp confirms when search occurred, but does not establish source freshness, current applicability, or legal authority. Citation excerpts support human review only.",
+    "capture_requirement": "Close crop of Authoritative Reference Sources band showing 'Retrieval status: Retrieved at request time; applicability pending review' and persistent disclaimer callout.",
+    "framing": "Persistent applicability banner and reference sources list"
+  },
+  {
+    "id": "shot-05-outage-replay-fail-closed",
+    "start_seconds": 74,
+    "end_seconds": 92,
+    "title": "Controlled Outage Replay & Unknown State",
+    "narration": "For the short-notice drone change or an offline partner boundary, the system fails closed to an UNKNOWN state. Under controlled outage replay, it displays zero retained sources rather than inventing citations, recommending escalation to the lead permit officer.",
+    "capture_requirement": "Execution bar showing 'Controlled Outage Replay (Offline)' selected, Short-notice drone case, and resulting amber UNKNOWN state with zero retained sources.",
+    "framing": "Execution dropdown and amber UNKNOWN escalation banner"
+  },
+  {
+    "id": "shot-06-coordinator-handoff-export",
+    "start_seconds": 92,
+    "end_seconds": 110,
+    "title": "Readable Coordinator Brief Export",
+    "narration": "Finally, the application generates a readable coordinator handoff brief containing changed fields, routing destination, and citations for compliance review. Permit Delta keeps decision ownership with qualified human operators.",
+    "capture_requirement": "Click on 'Coordinator Brief (.txt)' button and view of downloaded plaintext handoff document showing structured field deltas, explanation, and sources.",
+    "framing": "Action bar export buttons and open .txt brief preview"
+  }
+]
