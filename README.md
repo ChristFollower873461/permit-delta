@@ -9,8 +9,8 @@ This is a decision support tool. **It does not provide legal advice or autonomou
 ## Public Release
 
 - **Live demo:** https://permit-delta-public-oexevpfpmq-uc.a.run.app (Revision: permit-delta-public-f2a3762763 at 100% traffic)
-- **Demo video:** https://youtu.be/SBUIJVC5sNU (Historical video depicting 93c24751eb; replacement in preparation)
-- **Data boundary:** Every included permit, production plan, location, and contact detail is synthetic demonstration data. No customer uploads are supported.
+- **Demo video:** https://youtu.be/ZeFy9WalTeI
+- **Data boundary:** Every scenario and contact in the demonstration is synthetic. No customer uploads are supported.
 - **Execution boundary:** `Live partners` performs bounded runtime retrieval and explanation via Google Cloud Vertex AI and Parallel Search. `Controlled outage replay` disables both partner calls for one visibly labeled request and demonstrates the fail-closed path.
 
 ---
