@@ -8,10 +8,10 @@ This is a decision support tool. **It does not provide legal advice or autonomou
 
 ## Public Release
 
-- **Live demo:** https://permit-delta-public-oexevpfpmq-uc.a.run.app
-- **Demo video:** https://youtu.be/SBUIJVC5sNU
-- **Data boundary:** Every included permit, production plan, location, and contact detail is synthetic demonstration data.
-- **Execution boundary:** `Live partners` performs bounded runtime retrieval and explanation. `Controlled outage replay` disables both partner calls for one visibly labeled request and demonstrates the fail-closed path.
+- **Live demo:** https://permit-delta-public-oexevpfpmq-uc.a.run.app (Revision: permit-delta-public-f2a3762763 at 100% traffic)
+- **Demo video:** https://youtu.be/SBUIJVC5sNU (Historical video depicting 93c24751eb; replacement in preparation)
+- **Data boundary:** Every included permit, production plan, location, and contact detail is synthetic demonstration data. No customer uploads are supported.
+- **Execution boundary:** `Live partners` performs bounded runtime retrieval and explanation via Google Cloud Vertex AI and Parallel Search. `Controlled outage replay` disables both partner calls for one visibly labeled request and demonstrates the fail-closed path.
 
 ---
 
@@ -20,9 +20,10 @@ This is a decision support tool. **It does not provide legal advice or autonomou
 The complete judging path takes about three minutes and requires no account or private data:
 
 1. Open the **Live demo** above. The workspace loads with synthetic permit and production-plan data.
-2. Select **Scenario 2: Material Change**, keep **Live partners** selected, and choose **Run Review**. Confirm that one added 75kW generator produces `HOLD: MATERIAL DELTA; CONTACT PARK/CFC`, an explicit human destination, official-source evidence, and observed partner/model execution metadata.
+2. Select **Added generator**, keep **Live partners** selected, and choose **Run Operational Review**. Confirm that one added 75kW generator produces `HOLD: MATERIAL DELTA; CONTACT PARK/CFC`, an explicit human destination, official-source evidence, and observed partner/model execution metadata.
 3. Review the three bounded outcomes below. They intentionally separate an owner-review candidate, a mandatory hold, and an unknown state instead of collapsing every change into a generic answer.
-4. Select **Scenario 1: Control Change**, switch to **Controlled outage replay**, and run one review. Confirm that the result fails closed to `UNKNOWN`, retains zero sources, and marks both Parallel and Gemini as skipped.
+4. Select **Contact and schedule**, switch to **Controlled outage replay**, and run one review. Confirm that the result fails closed to `UNKNOWN`, retains zero sources, and marks both Parallel and Gemini as skipped.
+5. Click **Coordinator Brief (.txt)** or **Technical JSON** to generate a readable brief or raw payload of the current state.
 
 The model explains evidence and next steps; deterministic application logic owns every top-level state.
 
@@ -184,14 +185,17 @@ npm test
 
 ## Verification Status
 
-### Current Candidate Verification (September 4 Pass)
-- **Local Tests and Build:** 2 focused product-finish backend tests passed and the frontend production build compiled cleanly (`npm run build`).
-- **Layout & State Clearing Inspection:** Desktop and 390px mobile viewports were inspected for generator HOLD routing, controlled-outage replay UNKNOWN routing, truthful actual execution mode indicators, and immediate clearing of stale results upon scenario or partner mode switches.
-- **Export Payload Verification:** The coordinator handoff plaintext export function text payload was verified using a local response; browser-file delivery was not directly observed.
-- **Provider & Deployment Boundary:** No current-candidate live provider requests, Cloud Build runs, deployments, or publications occurred in this finish pass. Existing public releases remain unchanged.
+### Current Candidate Verification (September 8, 2026)
+- **Candidate:** `f2a37627631c4899661ae08cfc96a98d0d1d45fe` (Branch: `release-finish-20260908`)
+- **Revision:** `permit-delta-public-f2a3762763` (Digest: `sha256:a95c9cdb0126b8f2cf789abbfe84240c1f462aef5f733f0ddee6d98945e71b3e`)
+- **Hosted Evidence Session:** September 8, 2026, 9:18-9:21 PM Eastern. Continuous CDP screencast recorded actual hosted interactions on desktop and 390x844 mobile viewports. No synthetic results or mocked app frames were used.
+- **Added generator (Live):** Routed to `HOLD: MATERIAL DELTA; CONTACT PARK/CFC` (Destination: State Park Special Events Office & CFC). Next action pauses revised call-sheet handoff for generator specifications and proposed fire-safety placement review. Correlation `49762f4e-2b06-4953-b6b4-68a209373cc3`. Parallel observed (`search_57535c349ee0c59083e1a48474bf57df`, 5 retained sources). Vertex Gemini observed and validated (`gemini-3.7-flash`). Note: References include general rules and noisy navigation text, not proof of applicability. Do not imply every result is relevant or a legal finding.
+- **Contact and schedule (Live):** Routed to `OWNER REVIEW: NO MATERIAL PERMIT-SCOPE DELTA DETECTED` (Destination: Internal Production Coordinator). Correlation `44139564-d377-4d5e-aa10-bbb21f3a7a7c`. Parallel observed (`search_dc2cef565e6e873b6949bf3e9663e13f`, 4 retained sources). Vertex Gemini observed and validated (`gemini-3.7-flash`). Routing is deterministic, not a legal approval.
+- **Contact and schedule (Offline Replay):** Routed to `UNKNOWN: ESCALATION FOR MANUAL REVIEW` (Destination: Lead Permit Officer). Correlation `fb9af30a-07a9-4acf-9845-bed7eba154ef`. Search skipped, model skipped, no Vertex observation, 0 retained sources.
+- **Export:** The Coordinator Brief (.txt) button was clicked on the hosted generator result. The implementation generates a readable brief for download, awaiting owner confirmation of browser-file delivery.
 
-### Live Public Release (Reference Only)
-The live public app and video depict an earlier accepted release (`93c24751eb`). For that public release:
+### Historical Reference Release (93c24751eb)
+The live public service now serves `permit-delta-public-f2a3762763` at 100% traffic (with `93c24751eb` retained for rollback). The legacy YouTube demo video depicts that historical release while a replacement is in preparation. For historical reference, that prior release recorded:
 - **Local tests and build:** 28 focused backend tests and 12 focused frontend tests passed, and the frontend production build compiled successfully.
 - **Private live runtime evidence:** One accepted private revision completed three one-shot live scenarios plus one controlled replay. The live scenarios recorded Parallel and Gemini on Vertex AI metadata; the replay recorded zero retained sources, skipped both partners, and failed closed. The sequence used no retries.
 - **Presentation repair:** The release source changes only the presentation layer relative to that accepted private runtime. Its hosted desktop `1440x900` and mobile `390x844` controlled-replay comparison measured zero horizontal overflow with no partner calls.

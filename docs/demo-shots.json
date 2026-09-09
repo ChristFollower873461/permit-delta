@@ -4,7 +4,7 @@
     "start_seconds": 0,
     "end_seconds": 18,
     "title": "Initial Viewport & Added Generator Delta",
-    "narration": "In film production, plan changes happen fast. On this synthetic Sunset Tide shoot at Leo Carrillo State Park, the revised plan adds a 75kW generator to the tide pool sector. We run the operational review right from the top viewport.",
+    "narration": "In film production, plan changes happen fast. On this synthetic Sunset Tide shoot at Leo Carrillo State Park, the revised plan adds a 75kW generator to the tide pool sector. We run the operational review right from the top viewport to evaluate the delta.",
     "capture_requirement": "Close crop of header showing Sunset Tide, Leo Carrillo State Park, and the comparison table highlighting the added 75kW Towable Generator.",
     "framing": "Header bar down through comparison table rows at 1280x720 crop"
   },
@@ -13,44 +13,44 @@
     "start_seconds": 18,
     "end_seconds": 38,
     "title": "Deterministic HOLD Routing & Human Destination",
-    "narration": "The system flags the generator delta and routes the handoff to the State Park Special Events Office and the California Film Commission. The application recommends that the coordinator pause call-sheet release to submit fire-safety placement plans. The model cannot downgrade this safety route.",
+    "narration": "The system flags the generator delta and routes the handoff to the State Park Special Events Office and the California Film Commission. The application recommends pausing call-sheet release to submit fire-safety placement plans. The model cannot downgrade this deterministic safety route.",
     "capture_requirement": "Close crop of red HOLD state banner and dual destination boxes (State Park Special Events Office and Next Human Action).",
     "framing": "Focused on state banner and destination boxes in results container"
   },
   {
-    "id": "shot-03-control-owner-review",
+    "id": "shot-03-retrieval-applicability-boundary",
     "start_seconds": 38,
     "end_seconds": 56,
-    "title": "Control Case & Owner Review Routing",
-    "narration": "Next, we switch to a non-material contact and schedule reorder scenario. When live partners are available, Parallel retrieves reference guidelines from both state park and film commission domains, and Gemini synthesizes an operational explanation routed to the internal coordinator.",
-    "capture_requirement": "Selection of 'Contact and schedule' tab and resulting green OWNER REVIEW state banner with Internal Production Coordinator destination.",
-    "framing": "Scenario tabs and green owner review state card"
+    "title": "Retrieval Status & Applicability Disclaimer",
+    "narration": "Notice the execution receipt: Parallel retrieved five sources, and Vertex Gemini synthesized the explanation. These references include general park rules, not proof of applicability, and some excerpts contain noisy navigation text. They support human review only and do not imply every result is a legal finding.",
+    "capture_requirement": "Close crop of Authoritative Reference Sources band showing execution receipt and persistent disclaimer callout.",
+    "framing": "Persistent applicability banner and reference sources list"
   },
   {
-    "id": "shot-04-retrieval-applicability-boundary",
+    "id": "shot-04-control-owner-review",
     "start_seconds": 56,
     "end_seconds": 74,
-    "title": "Retrieval Status & Applicability Disclaimer",
-    "narration": "Notice the honest boundary: retrieval timestamp confirms when search occurred, but does not establish source freshness, current applicability, or legal authority. Citation excerpts support human review only.",
-    "capture_requirement": "Close crop of Authoritative Reference Sources band showing 'Retrieval status: Retrieved at request time; applicability pending review' and persistent disclaimer callout.",
-    "framing": "Persistent applicability banner and reference sources list"
+    "title": "Control Case & Owner Review Routing",
+    "narration": "Next, we switch to a non-material contact and schedule reorder. When live partners are available, the system routes to the internal coordinator for owner review. Parallel retrieves four sources, and Gemini explains the state. The routing is deterministic, not a legal approval.",
+    "capture_requirement": "Selection of 'Contact and schedule' tab and resulting green OWNER REVIEW state banner with Internal Production Coordinator destination.",
+    "framing": "Scenario tabs and green owner review state card"
   },
   {
     "id": "shot-05-outage-replay-fail-closed",
     "start_seconds": 74,
     "end_seconds": 92,
-    "title": "Controlled Outage Replay & Unknown State",
-    "narration": "For the short-notice drone change or an offline partner boundary, the system fails closed to an UNKNOWN state. Under controlled outage replay, it displays zero retained sources rather than inventing citations, recommending escalation to the lead permit officer.",
-    "capture_requirement": "Execution bar showing 'Controlled Outage Replay (Offline)' selected, Short-notice drone case, and resulting amber UNKNOWN state with zero retained sources.",
-    "framing": "Execution dropdown and amber UNKNOWN escalation banner"
+    "title": "Mobile Inspection & Desktop Outage Replay",
+    "narration": "Inspecting the same contact and schedule result on mobile confirms a responsive layout. Back on desktop, running a controlled outage replay for that case fails closed to an UNKNOWN state, displaying zero retained sources and skipping model execution.",
+    "capture_requirement": "Brief inspection of the live Contact and schedule OWNER REVIEW result on 390x844 mobile, followed by desktop execution of Controlled Outage Replay on the same case resulting in the amber UNKNOWN state with zero retained sources.",
+    "framing": "Mobile viewport inspection cutting to desktop controlled outage replay execution and amber UNKNOWN banner"
   },
   {
     "id": "shot-06-coordinator-handoff-export",
     "start_seconds": 92,
     "end_seconds": 110,
     "title": "Readable Coordinator Brief Export",
-    "narration": "Finally, the application generates a readable coordinator handoff brief containing changed fields, routing destination, and citations for compliance review. Permit Delta keeps decision ownership with qualified human operators.",
-    "capture_requirement": "Click on 'Coordinator Brief (.txt)' button and view of downloaded plaintext handoff document showing structured field deltas, explanation, and sources.",
-    "framing": "Action bar export buttons and open .txt brief preview"
+    "narration": "Permit Delta also generates a readable Coordinator Brief containing changed fields, routing destination, and citations for compliance review. The instrument keeps decision ownership with qualified human operators, using AI for explanation rather than autonomous approval.",
+    "capture_requirement": "Editorial cut showing the earlier recorded export click on the generator result. Do not show or claim an opened downloaded file.",
+    "framing": "Action bar export buttons"
   }
 ]
